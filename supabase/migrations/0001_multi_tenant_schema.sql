@@ -146,6 +146,47 @@ create table public.reservation_imports (
 create index reservation_imports_restaurant_id_idx on public.reservation_imports (restaurant_id);
 
 -- ============================================================
+-- TRIGGERS
+-- ============================================================
+create or replace function public.set_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+create trigger reservations_set_updated_at
+  before update on public.reservations
+  for each row execute function public.set_updated_at();
+
+-- visit_count counts actual visits: it is bumped when a reservation first
+-- enters 'seated' or 'completed', not when the booking is created.
+create or replace function public.bump_guest_visit_count()
+returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.status in ('seated', 'completed')
+     and (tg_op = 'INSERT' or old.status not in ('seated', 'completed')) then
+    if new.guest_email is not null then
+      update public.guest_directory
+      set visit_count = visit_count + 1
+      where restaurant_id = new.restaurant_id and guest_email = new.guest_email;
+    elsif new.guest_phone is not null then
+      update public.guest_directory
+      set visit_count = visit_count + 1
+      where restaurant_id = new.restaurant_id and guest_phone = new.guest_phone;
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger reservations_bump_visit_count
+  after insert or update of status on public.reservations
+  for each row execute function public.bump_guest_visit_count();
+
+-- ============================================================
 -- RLS HELPERS
 -- ============================================================
 create or replace function public.is_platform_admin()
@@ -158,6 +199,12 @@ create or replace function public.current_staff_restaurant_id()
 returns uuid
 language sql stable security definer set search_path = public as $$
   select restaurant_id from public.staff_profiles where user_id = auth.uid();
+$$;
+
+create or replace function public.current_staff_role()
+returns text
+language sql stable security definer set search_path = public as $$
+  select role from public.staff_profiles where user_id = auth.uid();
 $$;
 
 -- ============================================================
@@ -176,9 +223,17 @@ create policy "platform admins manage restaurants" on public.restaurants
   for all using (public.is_platform_admin()) with check (public.is_platform_admin());
 create policy "staff read own restaurant" on public.restaurants
   for select using (id = public.current_staff_restaurant_id());
-create policy "staff update own restaurant settings" on public.restaurants
-  for update using (id = public.current_staff_restaurant_id())
-  with check (id = public.current_staff_restaurant_id());
+-- Restaurant settings are sensitive (opening hours, booking rules): only
+-- owner/manager can change them, plain staff have read-only access.
+create policy "owner or manager update own restaurant settings" on public.restaurants
+  for update using (
+    id = public.current_staff_restaurant_id()
+    and public.current_staff_role() in ('owner', 'manager')
+  )
+  with check (
+    id = public.current_staff_restaurant_id()
+    and public.current_staff_role() in ('owner', 'manager')
+  );
 
 create policy "platform admins manage sections" on public.dining_sections
   for all using (public.is_platform_admin()) with check (public.is_platform_admin());
