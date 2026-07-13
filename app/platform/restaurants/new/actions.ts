@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getIsPlatformAdmin } from "@/lib/auth/session";
+import { getRequestOrigin } from "@/lib/site-url";
 
 export type NewRestaurantState = { error?: string; success?: boolean };
 
@@ -54,7 +55,7 @@ export async function createRestaurant(
   }
 
   const admin = createAdminClient();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  const siteUrl = await getRequestOrigin();
 
   const { data: invite, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
     ownerEmail,

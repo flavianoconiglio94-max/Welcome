@@ -8,6 +8,7 @@ import {
   type Reservation,
   type ReservationStatus,
 } from "@/lib/types";
+import { formatDateTime } from "@/lib/format";
 import { updateReservationStatus } from "./actions";
 
 const TRANSITION_LABELS: Record<ReservationStatus, string> = {
@@ -20,7 +21,13 @@ const TRANSITION_LABELS: Record<ReservationStatus, string> = {
   no_show: "No-show",
 };
 
-function ReservationRow({ reservation }: { reservation: Reservation }) {
+function ReservationRow({
+  reservation,
+  timezone,
+}: {
+  reservation: Reservation;
+  timezone: string;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +53,7 @@ function ReservationRow({ reservation }: { reservation: Reservation }) {
         </span>
       </div>
       <div className="text-sm text-zinc-600 dark:text-zinc-400">
-        {new Date(reservation.starts_at).toLocaleString("it-IT")} &middot;{" "}
+        {formatDateTime(reservation.starts_at, timezone)} &middot;{" "}
         {reservation.party_size} persone
         {reservation.guest_phone ? ` · ${reservation.guest_phone}` : ""}
         {reservation.guest_email ? ` · ${reservation.guest_email}` : ""}
@@ -72,7 +79,13 @@ function ReservationRow({ reservation }: { reservation: Reservation }) {
   );
 }
 
-export function ReservationsList({ reservations }: { reservations: Reservation[] }) {
+export function ReservationsList({
+  reservations,
+  timezone,
+}: {
+  reservations: Reservation[];
+  timezone: string;
+}) {
   if (reservations.length === 0) {
     return (
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -84,7 +97,11 @@ export function ReservationsList({ reservations }: { reservations: Reservation[]
   return (
     <ul className="flex flex-col gap-2">
       {reservations.map((reservation) => (
-        <ReservationRow key={reservation.id} reservation={reservation} />
+        <ReservationRow
+          key={reservation.id}
+          reservation={reservation}
+          timezone={timezone}
+        />
       ))}
     </ul>
   );

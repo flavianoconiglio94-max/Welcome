@@ -14,15 +14,25 @@ export default async function AdminHomePage() {
   }
 
   const supabase = await createClient();
-  // No restaurant_id filter needed: RLS ("staff manage own reservations")
-  // already confines this to the caller's restaurant.
-  const { data: reservations, error } = await supabase
-    .from("reservations")
-    .select(
-      "id, restaurant_id, table_id, guest_name, guest_email, guest_phone, party_size, starts_at, ends_at, status, source, cancellation_token, notes",
-    )
-    .order("starts_at", { ascending: true })
-    .returns<Reservation[]>();
+  // No restaurant_id filter needed on reservations: RLS ("staff manage own
+  // reservations") already confines this to the caller's restaurant.
+  const [reservationsResult, restaurantResult] = await Promise.all([
+    supabase
+      .from("reservations")
+      .select(
+        "id, restaurant_id, table_id, guest_name, guest_email, guest_phone, party_size, starts_at, ends_at, status, source, cancellation_token, notes",
+      )
+      .order("starts_at", { ascending: true })
+      .returns<Reservation[]>(),
+    supabase
+      .from("restaurants")
+      .select("timezone")
+      .eq("id", staff.restaurant_id)
+      .single<{ timezone: string }>(),
+  ]);
+
+  const { data: reservations, error } = reservationsResult;
+  const timezone = restaurantResult.data?.timezone ?? "Europe/Rome";
 
   const active = (reservations ?? []).filter((r) => ACTIVE_STATUSES.includes(r.status));
   const past = (reservations ?? []).filter((r) => !ACTIVE_STATUSES.includes(r.status));
@@ -41,7 +51,7 @@ export default async function AdminHomePage() {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
           Attive
         </h2>
-        <ReservationsList reservations={active} />
+        <ReservationsList reservations={active} timezone={timezone} />
       </section>
 
       {past.length > 0 && (
@@ -49,7 +59,7 @@ export default async function AdminHomePage() {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
             Storico
           </h2>
-          <ReservationsList reservations={past} />
+          <ReservationsList reservations={past} timezone={timezone} />
         </section>
       )}
     </main>

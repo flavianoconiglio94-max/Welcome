@@ -16,8 +16,9 @@ export default async function BookPage({
     .maybeSingle<RestaurantPublic>();
 
   if (error || !data) {
-    // TEMPORARY diagnostic log — remove once the preview 404 is root-caused.
-    console.error("get_restaurant_public failed", { restaurantSlug, error });
+    if (error) {
+      console.error("get_restaurant_public failed", { restaurantSlug, error });
+    }
     notFound();
   }
 

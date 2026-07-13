@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getRequestOrigin } from "@/lib/site-url";
 
 export type LoginState = { error?: string; sent?: boolean };
 
@@ -14,7 +15,7 @@ export async function requestPlatformMagicLink(
   }
 
   const supabase = await createClient();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  const siteUrl = await getRequestOrigin();
 
   const { error } = await supabase.auth.signInWithOtp({
     email,

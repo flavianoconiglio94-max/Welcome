@@ -28,8 +28,11 @@ export function BookingForm({ restaurant }: { restaurant: RestaurantPublic }) {
   const minDate = useMemo(() => todayInTimezone(restaurant.timezone), [restaurant.timezone]);
 
   const [date, setDate] = useState(minDate);
+  // Default to 2 people, clamped inside the restaurant's allowed range —
+  // with min_party_size > 2 an unclamped 2 would silently query availability
+  // with an invalid size and always come back empty.
   const [partySize, setPartySize] = useState(
-    Math.min(2, restaurant.max_party_size) || restaurant.min_party_size,
+    Math.min(Math.max(2, restaurant.min_party_size), restaurant.max_party_size),
   );
   const [slots, setSlots] = useState<AvailabilitySlot[] | null>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
