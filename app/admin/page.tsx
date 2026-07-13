@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getStaffProfile } from "@/lib/auth/session";
+import { getCurrentUser, getStaffProfile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import type { Reservation } from "@/lib/types";
 import { ReservationsList } from "./ReservationsList";
@@ -7,10 +7,24 @@ import { ReservationsList } from "./ReservationsList";
 const ACTIVE_STATUSES = ["unconfirmed", "pending_seat", "confirmed", "seated"];
 
 export default async function AdminHomePage() {
-  const staff = await getStaffProfile();
-
-  if (!staff) {
+  const user = await getCurrentUser();
+  if (!user) {
     redirect("/admin/login");
+  }
+
+  const staff = await getStaffProfile();
+  if (!staff) {
+    // Logged in but not linked to any restaurant: redirecting back to the
+    // login form would just loop silently, so explain the actual problem.
+    return (
+      <main className="mx-auto flex max-w-md flex-1 flex-col justify-center gap-3 px-6 py-10 text-center">
+        <h1 className="text-xl font-semibold">Account non associato</h1>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Il tuo account ({user.email}) non è collegato a nessun ristorante.
+          Chiedi al gestore della piattaforma di invitarti come staff.
+        </p>
+      </main>
+    );
   }
 
   const supabase = await createClient();
