@@ -62,18 +62,28 @@ supabase/migrations/0001_*.sql, 0002_*.sql  # FATTO
 ## Stato di avanzamento per fase
 
 - **Fase 0 (scaffold)** — ✅ COMPLETATA: Next.js App Router + TypeScript + Tailwind scaffoldato, dipendenze installate (`@supabase/supabase-js`, `@supabase/ssr`, `zod`, `date-fns`, `resend`, `pdf-parse`), `lib/supabase/{client,server,admin}.ts`, `lib/auth/session.ts`, `middleware.ts`, `.env.example`, home page placeholder aggiornata.
-- **Fase 1 (schema + RPC)** — ✅ COMPLETATA E DEPLOYATA: le migrazioni `0001_multi_tenant_schema.sql`, `0002_booking_rpcs.sql` e `0003_security_hardening.sql` sono applicate al progetto Supabase **`restaurant-crm`** (ref `ecptncxpmzrowjwruxbq`, org del nuovo account, regione `eu-central-1`, URL `https://ecptncxpmzrowjwruxbq.supabase.co`). Il frontend è deployato in production su Vercel (team "CRM Completo", progetto `restaurant-crm`, alias `restaurant-crm-alpha.vercel.app`). La `SUPABASE_SERVICE_ROLE_KEY` NON è ancora configurata su Vercel (serve per l'onboarding via invito email): copiarla dal dashboard Supabase → Settings → API nelle env di Vercel.
-- **Fase 1 (onboarding + booking pubblico)** — ⏳ DA FARE: `/platform/restaurants/new` (invito owner via `supabase.auth.admin.inviteUserByEmail`, service-role client), `/r/[slug]/book` pagina pubblica.
-- **Fase 2 (dashboard admin)** — ⏳ DA FARE: vista prenotazioni per stato, CRUD tavoli/sezioni, scheda cliente, impostazioni link Google/Facebook/Instagram.
-- **Fase 2 (import TheFork)** — ⏳ DA FARE: upload PDF, parser deterministico (vedi formato analizzato sopra), anteprima/revisione, commit via `create_reservation`.
+- **Fase 1 (schema + RPC)** — ✅ COMPLETATA E DEPLOYATA: migrazioni `0001`–`0006` applicate al progetto Supabase **`restaurant-crm`** (ref `ecptncxpmzrowjwruxbq`, regione `eu-central-1`, URL `https://ecptncxpmzrowjwruxbq.supabase.co`). `0004`/`0005` aggiungono due nuove RPC pubbliche (`get_restaurant_public`, `get_reservation_for_management`) necessarie alle pagine sotto. `0006` è hardening difensivo (grant esplicito, non un fix di un bug live — verificato via `has_function_privilege` sul progetto reale prima e dopo). Il frontend in production su Vercel ha ora anche `SUPABASE_SERVICE_ROLE_KEY` configurata (serve per l'invito owner).
+- **Fase 1 (booking pubblico)** — ✅ COMPLETATA (sul branch `claude/new-project-feedback-xw4022`, non ancora mergiata su `main`/produzione): `/r/[slug]/book` (server component + `BookingForm` client, chiama `get_availability`/`request_reservation`, nessuna scelta tavolo per il cliente) e `/r/[slug]/book/confirm/[id]?token=...` (lookup e cancellazione via `cancellation_token`).
+- **Fase 1 (onboarding)** — ✅ COMPLETATA (stesso branch): `/platform/login` e `/admin/login` (magic link via `signInWithOtp`), `/auth/callback` (route handler condiviso, `exchangeCodeForSession`), `/platform/restaurants/new` (crea ristorante + invita owner via `inviteUserByEmail` col client service-role + assegna `staff_profiles.role='owner'`, autorizzazione ri-verificata dentro la server action).
+- **Fase 2 (dashboard admin)** — ✅ BASE COMPLETATA (stesso branch): `/admin` mostra le prenotazioni del proprio ristorante (scoping via RLS, nessun filtro esplicito necessario) divise in attive/storico, con pulsanti di transizione stato vincolati a `RESERVATION_TRANSITIONS` e update a concorrenza ottimistica (`.eq("status", from)`). Mancano ancora: CRUD tavoli/sezioni, scheda cliente, impostazioni link Google/Facebook/Instagram.
+- **Fase 2 (import TheFork)** — ⏳ DELIBERATAMENTE NON INIZIATA: scrivere il parser PDF senza il file reale (caricato in una sessione precedente, non disponibile in questa) rischiava mappature sbagliate non verificabili qui. Da fare ricaricando il PDF di esempio.
 - **Fase 3 (prefill Google/Meta)** — ⏳ DA FARE.
 - **Fase 4 (doc collegamento + Partner Interest Form)** — ⏳ DA FARE.
 
-## Prossimi passi consigliati nella nuova sessione
+## Nota per la revisione (sessione del 13/07, effort ridotto su Sonnet 5)
 
-1. Creare/clonare il nuovo repo GitHub (nuovo account) e scompattare `restaurant-crm-code.zip` al suo interno (contiene tutto il codice già scritto: `app/`, `lib/`, `supabase/migrations/`, `middleware.ts`, config varie).
-2. `npm install` per reinstallare `node_modules` (non incluso nello zip).
-3. Creare un nuovo progetto Supabase (nel nuovo account, senza il limite di 2 progetti raggiunto) e applicare le due migrazioni SQL con `apply_migration` (o CLI Supabase).
-4. Compilare `.env.local` da `.env.example` con le chiavi del nuovo progetto Supabase.
-5. Riprendere dalla Fase 1 rimanente (onboarding + booking pubblico) seguendo le fasi sopra elencate.
-6. Se serve ri-analizzare il formato PDF di TheFork per tarare il parser, l'utente ha un export reale (ristorante "Benthos Porto Rotondo") — la struttura tabellare è descritta in dettaglio sopra, ma ri-caricare il PDF nella nuova sessione aiuta a verificare i dettagli di formattazione durante l'implementazione del parser.
+Tutto il lavoro sopra (Fasi 1 e 2 base) è stato fatto con l'utente offline, quindi **non è stato mergiato su `main`** e **non è stato deployato in produzione** — resta sul branch `claude/new-project-feedback-xw4022`, pushato e pronto per la revisione. Motivo: questo sandbox non può raggiungere `supabase.co`/`vercel.app` direttamente (policy di rete dell'organizzazione blocca le richieste HTTP dirette da Bash/Node, solo i tool MCP dedicati Supabase/Vercel passano), quindi non potevo verificare il comportamento live dopo un eventuale deploy. La verifica è stata fatta con: build/typecheck/lint Next.js puliti ad ogni step, e test funzionali approfonditi di RPC/RLS su un Postgres 16 locale che replica lo schema reale (incluse simulazioni di sessioni `anon`/`authenticated` con JWT finti, isolamento multi-tenant tra ristoranti, concorrenza ottimistica sui cambi di stato).
+
+Un bug reale è stato trovato e corretto durante questo lavoro: la migrazione `0003` revocava `EXECUTE` su alcune funzioni helper RLS da `public, anon`, il che nel test locale toglieva l'accesso anche ad `authenticated` (ereditato solo tramite `PUBLIC`). Verificato poi che sul progetto Supabase reale `authenticated` aveva già il privilegio tramite i default privilege di Supabase (nessun bug live), ma `0006` lo rende comunque esplicito.
+
+Nota minor: nel commit "Add magic-link auth..." un backtick nel messaggio è stato interpretato dalla shell come comando, per cui una riga del messaggio di quel commit è leggermente corrotta (contenuto del codice non toccato). Non l'ho corretta con un amend per non riscrivere history già pushata senza permesso.
+
+C'è anche un ristorante demo già seedato sul progetto Supabase reale (slug `demo`, 2 tavoli) per poter provare subito `/r/demo/book` una volta deployato.
+
+## Prossimi passi consigliati
+
+1. Rivedere il diff del branch `claude/new-project-feedback-xw4022` (9 commit sopra `main`).
+2. Se ok, mergiare su `main` per far scattare il deploy automatico Vercel, poi verificare live `/r/demo/book`, il flusso onboarding (`/platform/login` con l'email platform admin) e la dashboard `/admin`.
+3. Verificare in Supabase Dashboard → Authentication → URL Configuration che i redirect URL `https://<dominio>/auth/callback` siano nella allow-list (altrimenti `signInWithOtp`/`inviteUserByEmail` falliscono in produzione anche se il codice è corretto).
+4. Fase 2 import TheFork: ricaricare il PDF di esempio ("Benthos Porto Rotondo") per implementare il parser con dati reali.
+5. Fase 2 rimanente: CRUD tavoli/sezioni, scheda cliente/guest_directory, impostazioni link social.
