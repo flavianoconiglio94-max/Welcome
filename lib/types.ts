@@ -69,3 +69,40 @@ export const RESERVATION_TRANSITIONS: Record<ReservationStatus, ReservationStatu
   cancelled: [],
   no_show: [],
 };
+
+export const SOURCE_LABELS: Record<string, string> = {
+  web: "Online",
+  google: "Google",
+  facebook: "Facebook",
+  admin: "Telefono / Diretta",
+  thefork_import: "Import TheFork",
+};
+
+export type DiningSection = {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  sort_order: number;
+};
+
+export type DiningTable = {
+  id: string;
+  restaurant_id: string;
+  section_id: string | null;
+  label: string;
+  capacity: number;
+  max_capacity: number | null;
+  is_active: boolean;
+};
+
+export type GuestDirectoryEntry = {
+  id: string;
+  restaurant_id: string;
+  guest_name: string | null;
+  guest_email: string | null;
+  guest_phone: string | null;
+  notes: string | null;
+  tags: string[];
+  visit_count: number;
+  created_at: string;
+};
