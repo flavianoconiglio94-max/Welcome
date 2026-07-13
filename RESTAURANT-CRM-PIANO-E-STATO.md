@@ -70,6 +70,18 @@ supabase/migrations/0001_*.sql, 0002_*.sql  # FATTO
 - **Fase 3 (prefill Google/Meta)** — ⏳ DA FARE.
 - **Fase 4 (doc collegamento + Partner Interest Form)** — ⏳ DA FARE.
 
+## Stato produzione (fine sessione 13/07 — TUTTO LIVE E VERIFICATO)
+
+- **URL stabili di produzione** (branch `main`, deploy automatico da Git):
+  - Prenotazione pubblica: `https://restaurant-crm-alpha.vercel.app/r/demo/book` (verificata 200, form funzionante)
+  - Gestionale staff: `https://restaurant-crm-alpha.vercel.app/admin/login` (verificata 200, form email+password)
+  - Platform admin: `https://restaurant-crm-alpha.vercel.app/platform/login`
+- **Login con password** è il metodo primario (aggiunto perché i magic link dipendono dalla configurazione Auth URL di Supabase, che risulta ancora ferma a localhost lato server nonostante i tentativi di modifica — vedi sotto). L'utente ha un account owner sul ristorante demo con password comunicata in chat.
+- **Config client pubblica committata** in `.env.production` (URL Supabase + anon key, pubbliche per design): ogni build Vercel è autosufficiente, le env del dashboard restano solo per i segreti e hanno comunque precedenza.
+- **Cose rimaste da sistemare nel dashboard** (non bloccanti):
+  1. `SUPABASE_SERVICE_ROLE_KEY` su Vercel va spuntata anche per l'ambiente Production (oggi probabilmente solo Preview) — serve SOLO per l'invito email dei nuovi owner da `/platform/restaurants/new`.
+  2. Supabase → Authentication → URL Configuration: Site URL e Redirect URLs risultano ancora `localhost` lato server (i log di GoTrue ripiegano su localhost anche con redirect corretti in ingresso). Da sistemare solo se si vogliono usare i magic link / gli inviti email; il login password non ne dipende.
+
 ## Nota per la revisione (sessione del 13/07, effort ridotto su Sonnet 5)
 
 Tutto il lavoro sopra (Fasi 1 e 2 base) è stato fatto con l'utente offline, quindi **non è stato mergiato su `main`** e **non è stato deployato in produzione** — resta sul branch `claude/new-project-feedback-xw4022`, pushato e pronto per la revisione. Motivo: questo sandbox non può raggiungere `supabase.co`/`vercel.app` direttamente (policy di rete dell'organizzazione blocca le richieste HTTP dirette da Bash/Node, solo i tool MCP dedicati Supabase/Vercel passano), quindi non potevo verificare il comportamento live dopo un eventuale deploy. La verifica è stata fatta con: build/typecheck/lint Next.js puliti ad ogni step, e test funzionali approfonditi di RPC/RLS su un Postgres 16 locale che replica lo schema reale (incluse simulazioni di sessioni `anon`/`authenticated` con JWT finti, isolamento multi-tenant tra ristoranti, concorrenza ottimistica sui cambi di stato).
