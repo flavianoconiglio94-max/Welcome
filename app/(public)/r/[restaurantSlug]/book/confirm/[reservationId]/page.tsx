@@ -1,17 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { Reservation } from "@/lib/types";
+import { RESERVATION_STATUS_LABELS, type Reservation } from "@/lib/types";
 import { CancelButton } from "./CancelButton";
-
-const STATUS_LABELS: Record<Reservation["status"], string> = {
-  unconfirmed: "In attesa di conferma",
-  pending_seat: "In attesa di essere accomodati",
-  confirmed: "Confermata",
-  seated: "Accomodati",
-  completed: "Completata",
-  cancelled: "Cancellata",
-  no_show: "No-show",
-};
 
 export default async function ConfirmPage({
   params,
@@ -49,7 +39,7 @@ export default async function ConfirmPage({
       <div className="flex flex-col gap-2 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
         <p className="text-sm">
           <span className="font-medium">Stato:</span>{" "}
-          {STATUS_LABELS[data.status]}
+          {RESERVATION_STATUS_LABELS[data.status]}
         </p>
         <p className="text-sm">
           <span className="font-medium">Data e ora:</span>{" "}
