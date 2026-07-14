@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense, useState, useTransition } from "react";
+import { Suspense, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { signOut } from "../actions";
+import { fadeIn, slideInLeft } from "@/lib/motion";
 
 const LINKS = [
   { href: "/admin", label: "Libro visite" },
@@ -49,6 +50,15 @@ function NewReservationButton() {
 export function AdminNav({ restaurantName }: { restaurantName: string }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const drawerRef = useRef<HTMLElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      slideInLeft(drawerRef.current);
+      fadeIn(backdropRef.current);
+    }
+  }, [open]);
 
   return (
     <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
@@ -88,10 +98,14 @@ export function AdminNav({ restaurantName }: { restaurantName: string }) {
       {open && (
         <div className="fixed inset-0 z-30" role="dialog" aria-modal="true">
           <div
+            ref={backdropRef}
             className="absolute inset-0 bg-black/40"
             onClick={() => setOpen(false)}
           />
-          <nav className="absolute inset-y-0 left-0 flex w-72 max-w-[85%] flex-col gap-1 bg-white p-4 shadow-xl dark:bg-zinc-950">
+          <nav
+            ref={drawerRef}
+            className="absolute inset-y-0 left-0 flex w-72 max-w-[85%] flex-col gap-1 bg-white p-4 shadow-xl dark:bg-zinc-950"
+          >
             <div className="mb-3 flex items-center justify-between">
               <p className="text-sm font-semibold">{restaurantName}</p>
               <button

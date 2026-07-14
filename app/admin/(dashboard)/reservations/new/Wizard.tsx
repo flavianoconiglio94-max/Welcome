@@ -4,9 +4,11 @@ import {
   useActionState,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
 } from "react";
+import { fadeInUp } from "@/lib/motion";
 import {
   createManualReservation,
   getDayLoad,
@@ -145,6 +147,12 @@ export function Wizard({
     }
   };
 
+  // Animate each step change with anime.js.
+  const stepRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    fadeInUp(stepRef.current);
+  }, [step]);
+
   return (
     <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 px-4 py-4">
       <div className="flex items-center gap-1 overflow-x-auto">
@@ -177,6 +185,7 @@ export function Wizard({
         )}
       </div>
 
+      <div ref={stepRef} className="flex flex-col gap-4">
       {step === 0 && (
         <CalendarStep
           date={date}
@@ -262,6 +271,7 @@ export function Wizard({
           goToStep={setStep}
         />
       )}
+      </div>
     </main>
   );
 }

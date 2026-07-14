@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useOptimistic, useState, useTransition } from "react";
+import { useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { staggerIn } from "@/lib/motion";
 import { addDaysISO, localTimeHM } from "@/lib/tz";
 import type { ServiceWindow } from "@/lib/services";
 import type { DiningSection, DiningTable, Reservation } from "@/lib/types";
@@ -91,6 +92,12 @@ export function DayBook({
       router.push(`/admin/reservations/new?date=${date}&time=${time}`);
     });
   }
+
+  // anime.js entrance for the group boxes whenever day or filters change.
+  const listRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    staggerIn(listRef.current?.querySelectorAll("details"));
+  }, [date, serviceKey, sectionKey]);
 
   const filtered = useMemo(
     () =>
@@ -220,6 +227,7 @@ export function DayBook({
       )}
 
       <div
+        ref={listRef}
         className={`flex flex-col gap-2 transition-opacity ${isPending ? "opacity-50" : ""}`}
       >
         {GROUPS.map((group) => {
