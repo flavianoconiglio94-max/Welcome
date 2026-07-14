@@ -45,7 +45,13 @@ export type Reservation = {
   source: string;
   cancellation_token: string;
   notes: string | null;
+  table_locked: boolean;
 };
+
+// Column list kept in sync with the Reservation type: use it in every
+// .select() so a new column can't be silently missing from one page.
+export const RESERVATION_COLUMNS =
+  "id, restaurant_id, table_id, guest_name, guest_email, guest_phone, party_size, starts_at, ends_at, status, source, cancellation_token, notes, table_locked";
 
 export const RESERVATION_STATUS_LABELS: Record<ReservationStatus, string> = {
   unconfirmed: "In attesa di conferma",

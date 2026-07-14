@@ -4,6 +4,7 @@ import { SettingsForm } from "./SettingsForm";
 
 type RestaurantSettings = {
   slug: string;
+  max_covers_per_slot: number | null;
   name: string;
   phone: string | null;
   address: string | null;
@@ -19,7 +20,7 @@ export default async function SettingsPage() {
   const { data: restaurant } = await supabase
     .from("restaurants")
     .select(
-      "slug, name, phone, address, google_business_profile_url, facebook_page_url, instagram_handle",
+      "slug, name, phone, address, google_business_profile_url, facebook_page_url, instagram_handle, max_covers_per_slot",
     )
     .eq("id", staff.restaurant_id)
     .single<RestaurantSettings>();

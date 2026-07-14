@@ -10,6 +10,7 @@ import {
   type ReservationStatus,
 } from "@/lib/types";
 import {
+  updateReservationLock,
   updateReservationNotes,
   updateReservationStatus,
   updateReservationTable,
@@ -69,13 +70,23 @@ export function ReservationActions({
       )}
 
       <label className="flex flex-col gap-1 text-sm">
-        Tavolo
+        Tavolo {reservation.table_locked && "🔒 (bloccato)"}
         <select
           value={reservation.table_id ?? ""}
           disabled={pending}
-          onChange={(e) =>
-            run(() => updateReservationTable(reservation.id, e.target.value || null))
-          }
+          onChange={(e) => {
+            // Moving a locked reservation requires an explicit confirmation.
+            if (
+              reservation.table_locked &&
+              !window.confirm(
+                "Questa prenotazione è bloccata sul tavolo assegnato. Confermi lo spostamento?",
+              )
+            ) {
+              e.target.value = reservation.table_id ?? "";
+              return;
+            }
+            run(() => updateReservationTable(reservation.id, e.target.value || null));
+          }}
           className={inputClass}
         >
           <option value="">Nessun tavolo</option>
@@ -86,6 +97,23 @@ export function ReservationActions({
           ))}
         </select>
       </label>
+
+      {reservation.table_id && (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            run(() => updateReservationLock(reservation.id, !reservation.table_locked))
+          }
+          className={`self-start rounded px-3 py-1.5 text-sm disabled:opacity-50 ${
+            reservation.table_locked
+              ? "bg-amber-500 font-medium text-white"
+              : "border border-zinc-300 dark:border-zinc-700"
+          }`}
+        >
+          {reservation.table_locked ? "🔒 Sblocca tavolo" : "🔓 Blocca tavolo"}
+        </button>
+      )}
 
       <label className="flex flex-col gap-1 text-sm">
         Note private

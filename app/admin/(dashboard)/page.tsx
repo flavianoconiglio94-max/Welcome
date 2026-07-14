@@ -1,10 +1,9 @@
-import Link from "next/link";
 import { getStaffProfile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { servicesForDate, type OpeningHours } from "@/lib/services";
 import { addDaysISO, localDateISO, localTimeHM, utcFromZoned } from "@/lib/tz";
-import type { DiningSection, DiningTable, Reservation } from "@/lib/types";
-import { DatePicker } from "./DatePicker";
+import { RESERVATION_COLUMNS, type DiningSection, type DiningTable, type Reservation } from "@/lib/types";
+import { DayToolbar } from "./DayToolbar";
 import { ReservationCard } from "./ReservationCard";
 
 type Restaurant = { timezone: string; opening_hours: OpeningHours };
@@ -45,7 +44,7 @@ export default async function LibroVisitePage({
     supabase
       .from("reservations")
       .select(
-        "id, restaurant_id, table_id, guest_name, guest_email, guest_phone, party_size, starts_at, ends_at, status, source, cancellation_token, notes",
+        RESERVATION_COLUMNS,
       )
       .gte("starts_at", dayStart.toISOString())
       .lt("starts_at", dayEnd.toISOString())
@@ -84,80 +83,16 @@ export default async function LibroVisitePage({
     return true;
   });
 
-  const buildUrl = (next: { date?: string; service?: string; section?: string }) => {
-    const q = new URLSearchParams();
-    q.set("date", next.date ?? date);
-    const svc = next.service ?? serviceKey;
-    if (svc !== "all") q.set("service", svc);
-    const sec = next.section ?? sectionKey;
-    if (sec !== "all") q.set("section", sec);
-    return `/admin?${q.toString()}`;
-  };
-
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-4 py-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Link
-          href={buildUrl({ date: addDaysISO(date, -1) })}
-          className="flex h-9 w-9 items-center justify-center rounded border border-zinc-300 dark:border-zinc-700"
-          aria-label="Giorno precedente"
-        >
-          ←
-        </Link>
-        <DatePicker date={date} today={localDateISO(timezone)} />
-        <Link
-          href={buildUrl({ date: addDaysISO(date, 1) })}
-          className="flex h-9 w-9 items-center justify-center rounded border border-zinc-300 dark:border-zinc-700"
-          aria-label="Giorno successivo"
-        >
-          →
-        </Link>
-        <div className="ml-auto flex gap-1">
-          <Link
-            href={buildUrl({ service: "all" })}
-            className={`rounded px-3 py-1.5 text-sm ${serviceKey === "all" ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900" : "border border-zinc-300 dark:border-zinc-700"}`}
-          >
-            Tutto
-          </Link>
-          {services.map((s) => (
-            <Link
-              key={s.key}
-              href={buildUrl({ service: s.key })}
-              className={`rounded px-3 py-1.5 text-sm ${serviceKey === s.key ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900" : "border border-zinc-300 dark:border-zinc-700"}`}
-            >
-              {s.label}
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {sections.length > 0 && (
-        <div className="flex gap-3 overflow-x-auto text-sm">
-          <Link
-            href={buildUrl({ section: "all" })}
-            className={
-              sectionKey === "all"
-                ? "font-semibold text-blue-600 dark:text-blue-400"
-                : "text-zinc-600 dark:text-zinc-400"
-            }
-          >
-            Tutte
-          </Link>
-          {sections.map((s) => (
-            <Link
-              key={s.id}
-              href={buildUrl({ section: s.id })}
-              className={
-                sectionKey === s.id
-                  ? "whitespace-nowrap font-semibold text-blue-600 dark:text-blue-400"
-                  : "whitespace-nowrap text-zinc-600 dark:text-zinc-400"
-              }
-            >
-              {s.name}
-            </Link>
-          ))}
-        </div>
-      )}
+      <DayToolbar
+        date={date}
+        today={localDateISO(timezone)}
+        serviceKey={serviceKey}
+        sectionKey={sectionKey}
+        services={services}
+        sections={sections}
+      />
 
       {reservationsResult.error && (
         <p className="text-sm text-red-600 dark:text-red-400">

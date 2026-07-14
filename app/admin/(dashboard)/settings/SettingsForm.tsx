@@ -15,6 +15,7 @@ export function SettingsForm({
     google_business_profile_url: string | null;
     facebook_page_url: string | null;
     instagram_handle: string | null;
+    max_covers_per_slot: number | null;
   };
 }) {
   const [state, formAction, pending] = useActionState(
@@ -38,6 +39,21 @@ export function SettingsForm({
       <label className="flex flex-col gap-1 text-sm">
         Indirizzo
         <input name="address" defaultValue={restaurant.address ?? ""} className={inputClass} />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Coperti massimi per fascia oraria
+        <input
+          type="number"
+          name="maxCovers"
+          min={1}
+          placeholder="Vuoto = nessun limite"
+          defaultValue={restaurant.max_covers_per_slot ?? ""}
+          className={inputClass}
+        />
+        <span className="text-xs text-zinc-500">
+          Mostrato come &quot;prenotati / massimo&quot; nella scelta orario del
+          form prenotazione.
+        </span>
       </label>
       <label className="flex flex-col gap-1 text-sm">
         Link Google Business Profile

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getStaffProfile } from "@/lib/auth/session";
-import { utcFromZoned } from "@/lib/tz";
+import { addDaysISO, utcFromZoned } from "@/lib/tz";
 import {
   RESERVATION_TRANSITIONS,
   type GuestDirectoryEntry,
@@ -76,6 +76,24 @@ export async function updateReservationTable(
   return {};
 }
 
+export async function updateReservationLock(
+  reservationId: string,
+  locked: boolean,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("reservations")
+    .update({ table_locked: locked })
+    .eq("id", reservationId);
+
+  if (error) {
+    return { error: mapDbError(error) };
+  }
+
+  revalidatePath("/admin");
+  return {};
+}
+
 export async function updateReservationNotes(
   reservationId: string,
   notes: string,
@@ -94,6 +112,46 @@ export async function updateReservationNotes(
   return {};
 }
 
+export type DayLoadEntry = {
+  starts_at: string;
+  ends_at: string;
+  party_size: number;
+  table_id: string | null;
+};
+
+// Active reservations of one local day, used by the wizard to show per-slot
+// covers ("3/40") and which tables are taken at the chosen time.
+export async function getDayLoad(date: string): Promise<DayLoadEntry[]> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return [];
+  }
+  const staff = await getStaffProfile();
+  if (!staff) {
+    return [];
+  }
+
+  const supabase = await createClient();
+  const { data: restaurant } = await supabase
+    .from("restaurants")
+    .select("timezone")
+    .eq("id", staff.restaurant_id)
+    .single<{ timezone: string }>();
+  const timezone = restaurant?.timezone ?? "Europe/Rome";
+
+  const dayStart = utcFromZoned(date, "00:00", timezone);
+  const dayEnd = utcFromZoned(addDaysISO(date, 1), "00:00", timezone);
+
+  const { data } = await supabase
+    .from("reservations")
+    .select("starts_at, ends_at, party_size, table_id")
+    .gte("starts_at", dayStart.toISOString())
+    .lt("starts_at", dayEnd.toISOString())
+    .in("status", ["unconfirmed", "pending_seat", "confirmed", "seated"])
+    .returns<DayLoadEntry[]>();
+
+  return data ?? [];
+}
+
 export type CreateReservationState = { error?: string };
 
 export async function createManualReservation(
@@ -108,12 +166,22 @@ export async function createManualReservation(
   const date = String(formData.get("date") ?? "");
   const time = String(formData.get("time") ?? "");
   const durationMinutes = Number(formData.get("duration") ?? 120);
-  const partySize = Number(formData.get("partySize") ?? 0);
+  const adults = Number(formData.get("adults") ?? 0);
+  const children = Number(formData.get("children") ?? 0);
+  const partySize =
+    Number(formData.get("partySize") ?? 0) ||
+    (Number.isFinite(adults) && Number.isFinite(children) ? adults + children : 0);
   const tableId = String(formData.get("tableId") ?? "");
+  const tableLocked = formData.get("tableLocked") === "1";
   const guestName = String(formData.get("guestName") ?? "").trim();
   const guestEmail = String(formData.get("guestEmail") ?? "").trim();
   const guestPhone = String(formData.get("guestPhone") ?? "").trim();
-  const notes = String(formData.get("notes") ?? "").trim();
+  let notes = String(formData.get("notes") ?? "").trim();
+  if (children > 0) {
+    notes = [`${children} bambin${children === 1 ? "o" : "i"}`, notes]
+      .filter(Boolean)
+      .join(" · ");
+  }
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) {
     return { error: "Data o ora non valide." };
@@ -139,7 +207,7 @@ export async function createManualReservation(
   const startsAt = utcFromZoned(date, time, timezone);
   const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
 
-  const { error } = await supabase
+  const { data: created, error } = await supabase
     .rpc("create_reservation", {
       p_restaurant_id: staff.restaurant_id,
       p_starts_at: startsAt.toISOString(),
@@ -157,6 +225,13 @@ export async function createManualReservation(
 
   if (error) {
     return { error: mapDbError(error) };
+  }
+
+  if (tableLocked && created?.id && created.table_id) {
+    await supabase
+      .from("reservations")
+      .update({ table_locked: true })
+      .eq("id", created.id);
   }
 
   revalidatePath("/admin");

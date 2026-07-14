@@ -4,6 +4,7 @@ import { getStaffProfile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateTime } from "@/lib/format";
 import {
+  RESERVATION_COLUMNS,
   RESERVATION_STATUS_LABELS,
   SOURCE_LABELS,
   type DiningTable,
@@ -23,7 +24,7 @@ export default async function ReservationDetailPage({
   const { data: reservation } = await supabase
     .from("reservations")
     .select(
-      "id, restaurant_id, table_id, guest_name, guest_email, guest_phone, party_size, starts_at, ends_at, status, source, cancellation_token, notes",
+      RESERVATION_COLUMNS,
     )
     .eq("id", id)
     .maybeSingle<Reservation>();
@@ -58,7 +59,7 @@ export default async function ReservationDetailPage({
     const { data } = await supabase
       .from("reservations")
       .select(
-        "id, restaurant_id, table_id, guest_name, guest_email, guest_phone, party_size, starts_at, ends_at, status, source, cancellation_token, notes",
+        RESERVATION_COLUMNS,
       )
       .eq(contactFilter.column, contactFilter.value)
       .neq("id", reservation.id)

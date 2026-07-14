@@ -18,6 +18,12 @@ export async function updateRestaurantSettings(
 
   const clean = (key: string) => String(formData.get(key) ?? "").trim() || null;
 
+  const maxCoversRaw = String(formData.get("maxCovers") ?? "").trim();
+  const maxCovers = maxCoversRaw ? Number(maxCoversRaw) : null;
+  if (maxCovers !== null && (!Number.isInteger(maxCovers) || maxCovers < 1)) {
+    return { error: "Coperti massimi per fascia: inserisci un numero intero positivo o lascia vuoto." };
+  }
+
   const supabase = await createClient();
   // RLS allows this update only for owner/manager roles.
   const { error, data } = await supabase
@@ -29,6 +35,7 @@ export async function updateRestaurantSettings(
       google_business_profile_url: clean("gbp"),
       facebook_page_url: clean("facebook"),
       instagram_handle: clean("instagram"),
+      max_covers_per_slot: maxCovers,
     })
     .eq("id", staff.restaurant_id)
     .select("id");

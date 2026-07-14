@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState, useTransition } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { signOut } from "../actions";
 
 const LINKS = [
@@ -11,6 +11,40 @@ const LINKS = [
   { href: "/admin/tables", label: "Sale e tavoli" },
   { href: "/admin/settings", label: "Impostazioni" },
 ];
+
+// Carries the day currently shown in the libro visite into the wizard, and
+// shows a spinner while the wizard page loads.
+function NewReservationButton() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() =>
+        startTransition(() => {
+          const date = searchParams.get("date");
+          router.push(
+            date
+              ? `/admin/reservations/new?date=${date}`
+              : "/admin/reservations/new",
+          );
+        })
+      }
+      className="ml-auto flex items-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-70 dark:bg-white dark:text-zinc-900"
+    >
+      {pending && (
+        <span
+          aria-hidden
+          className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white dark:border-zinc-900/40 dark:border-t-zinc-900"
+        />
+      )}
+      + Prenotazione
+    </button>
+  );
+}
 
 export function AdminNav({ restaurantName }: { restaurantName: string }) {
   const [open, setOpen] = useState(false);
@@ -33,12 +67,15 @@ export function AdminNav({ restaurantName }: { restaurantName: string }) {
             {LINKS.find((l) => l.href === pathname)?.label ?? "Gestionale"}
           </p>
         </div>
-        <Link
-          href="/admin/reservations/new"
-          className="ml-auto rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-zinc-900"
+        <Suspense
+          fallback={
+            <span className="ml-auto rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-zinc-900">
+              + Prenotazione
+            </span>
+          }
         >
-          + Prenotazione
-        </Link>
+          <NewReservationButton />
+        </Suspense>
       </div>
 
       {open && (
