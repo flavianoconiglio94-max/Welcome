@@ -14,8 +14,11 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
 
   // Same-site paths only, so the link can't become an open redirect.
-  const rawNext = searchParams.get("next") ?? "/admin";
-  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/admin";
+  const rawNext = searchParams.get("next");
+  const explicitNext =
+    rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
+  const defaultNext = type === "recovery" ? "/account/reset-password" : "/admin";
+  const next = explicitNext ?? defaultNext;
 
   if (tokenHash && type) {
     const supabase = await createClient();
@@ -28,11 +31,20 @@ export async function GET(request: Request) {
     }
   } else if (code) {
     // Default-template flow: GoTrue's /verify already validated the email
-    // token and redirected here with a PKCE code to exchange.
+    // token and redirected here with a PKCE code to exchange. When the link
+    // fell back to the Site URL, the code arrives with no next/type context:
+    // a recent recovery_sent_at on the user tells us it was a password reset.
     const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      let target = next;
+      if (!explicitNext && !type) {
+        const sentAt = data.session?.user?.recovery_sent_at;
+        if (sentAt && Date.now() - new Date(sentAt).getTime() < 15 * 60_000) {
+          target = "/account/reset-password";
+        }
+      }
+      return NextResponse.redirect(`${origin}${target}`);
     }
   }
 

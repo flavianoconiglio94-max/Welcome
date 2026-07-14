@@ -1,15 +1,27 @@
-export default function Home() {
-  return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-      <h1 className="text-3xl font-semibold tracking-tight">Restaurant CRM</h1>
-      <p className="max-w-md text-zinc-600 dark:text-zinc-400">
-        Gestionale prenotazioni multi-ristorante. Ogni ristorante cliente ha
-        la propria pagina di prenotazione pubblica su{" "}
-        <code className="rounded bg-zinc-100 px-1 py-0.5 dark:bg-zinc-800">
-          /r/[slug]/book
-        </code>
-        .
-      </p>
-    </main>
-  );
+import { redirect } from "next/navigation";
+
+// The root of the app is not a public page: guests book on /r/[slug]/book and
+// staff work in /admin. Supabase's email-link fallback also dumps auth tokens
+// here when its redirect allow-list doesn't match, so forward those to the
+// verifier instead of losing them on a placeholder page.
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+
+  const forward = new URLSearchParams();
+  for (const key of ["code", "token_hash", "type", "next"]) {
+    const value = params[key];
+    if (typeof value === "string" && value) {
+      forward.set(key, value);
+    }
+  }
+
+  if (forward.has("code") || forward.has("token_hash")) {
+    redirect(`/auth/confirm?${forward.toString()}`);
+  }
+
+  redirect("/admin/login");
 }
