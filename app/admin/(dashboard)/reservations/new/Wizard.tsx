@@ -30,6 +30,7 @@ const initialState: CreateReservationState = {};
 
 export function Wizard({
   defaultDate,
+  defaultTime,
   today,
   openingHours,
   slotInterval,
@@ -40,6 +41,7 @@ export function Wizard({
   tables,
 }: {
   defaultDate: string;
+  defaultTime: string | null;
   today: string;
   openingHours: OpeningHours;
   slotInterval: number;
@@ -49,11 +51,14 @@ export function Wizard({
   sections: DiningSection[];
   tables: DiningTable[];
 }) {
-  const [step, setStep] = useState(0);
+  // When the libro visite opens the wizard from a time-slot row, date and
+  // time are already chosen: start directly from the PAX step.
+  const [step, setStep] = useState(defaultTime ? 1 : 0);
   const [date, setDate] = useState(defaultDate);
   const [adults, setAdults] = useState(0);
   const [children, setChildren] = useState(0);
-  const [time, setTime] = useState<string | null>(null);
+  const [time, setTime] = useState<string | null>(defaultTime);
+  const [duration, setDuration] = useState(defaultDuration);
   const [tableId, setTableId] = useState<string | null>(null);
   const [tableLocked, setTableLocked] = useState(false);
   const [manualTable, setManualTable] = useState(false);
@@ -89,7 +94,7 @@ export function Wizard({
   const occupiedTableIds = useMemo(() => {
     if (!time) return new Set<string>();
     const start = utcFromZoned(date, time, timezone).getTime();
-    const end = start + defaultDuration * 60_000;
+    const end = start + duration * 60_000;
     const busy = new Set<string>();
     for (const r of dayLoad) {
       if (!r.table_id) continue;
@@ -98,11 +103,11 @@ export function Wizard({
       if (rStart < end && rEnd > start) busy.add(r.table_id);
     }
     return busy;
-  }, [dayLoad, date, time, timezone, defaultDuration]);
+  }, [dayLoad, date, time, timezone, duration]);
 
-  const freeTablesAt = (timeStr: string) => {
+  const freeTablesAt = (timeStr: string, forPax = pax) => {
     const start = utcFromZoned(date, timeStr, timezone).getTime();
-    const end = start + defaultDuration * 60_000;
+    const end = start + duration * 60_000;
     const busy = new Set<string>();
     for (const r of dayLoad) {
       if (!r.table_id) continue;
@@ -111,7 +116,7 @@ export function Wizard({
       }
     }
     return tables
-      .filter((t) => !busy.has(t.id) && t.capacity >= Math.max(pax, 1))
+      .filter((t) => !busy.has(t.id) && t.capacity >= Math.max(forPax, 1))
       .sort((a, b) => a.capacity - b.capacity);
   };
 
@@ -152,9 +157,9 @@ export function Wizard({
               type="button"
               disabled={!reachable && i !== step}
               onClick={() => reachable && setStep(i)}
-              className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium ${
+              className={`whitespace-nowrap rounded px-3 py-1.5 text-xs font-medium ${
                 i === step
-                  ? "bg-blue-600 text-white"
+                  ? "bg-[#0067c0] text-white"
                   : reachable
                     ? "border border-zinc-300 dark:border-zinc-700"
                     : "border border-zinc-200 text-zinc-400 dark:border-zinc-800 dark:text-zinc-600"
@@ -167,7 +172,7 @@ export function Wizard({
         {loadPending && (
           <span
             aria-hidden
-            className="ml-auto h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-zinc-300 border-t-blue-500"
+            className="ml-auto h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-zinc-300 border-t-[#0067c0]"
           />
         )}
       </div>
@@ -195,9 +200,16 @@ export function Wizard({
           onDone={(a, c) => {
             setAdults(a);
             setChildren(c);
-            setTableId(null);
             setManualTable(false);
-            setStep(2);
+            if (time) {
+              // Time already chosen (slot row or edit from summary):
+              // re-run the table pre-assignment and skip to the floor map.
+              setTableId(freeTablesAt(time, a + c)[0]?.id ?? null);
+              setStep(3);
+            } else {
+              setTableId(null);
+              setStep(2);
+            }
           }}
         />
       )}
@@ -243,9 +255,11 @@ export function Wizard({
           time={time}
           adults={adults}
           childrenCount={children}
-          duration={defaultDuration}
+          duration={duration}
+          setDuration={setDuration}
           table={tables.find((t) => t.id === tableId) ?? null}
           tableLocked={tableLocked}
+          goToStep={setStep}
         />
       )}
     </main>
@@ -330,11 +344,11 @@ function CalendarStep({
               key={d}
               type="button"
               onClick={() => onPick(d)}
-              className={`flex h-11 items-center justify-center rounded-full text-sm ${
+              className={`flex h-11 items-center justify-center rounded text-sm ${
                 d === date
-                  ? "bg-blue-600 font-semibold text-white"
+                  ? "bg-[#0067c0] font-semibold text-white"
                   : d === today
-                    ? "border border-green-600 font-medium text-green-700 dark:text-green-400"
+                    ? "border border-[#107c10] font-medium text-[#107c10] dark:text-[#6ccb5f]"
                     : "active:bg-zinc-200 dark:active:bg-zinc-800"
               }`}
             >
@@ -346,7 +360,7 @@ function CalendarStep({
       <button
         type="button"
         onClick={() => onPick(today)}
-        className="rounded bg-green-600 px-4 py-2.5 text-sm font-medium text-white"
+        className="rounded bg-[#107c10] px-4 py-2.5 text-sm font-medium text-white"
       >
         Oggi
       </button>
@@ -393,9 +407,9 @@ function PaxStep({
         type="button"
         disabled={adults + childrenCount < 1}
         onClick={() => onDone(adults, childrenCount)}
-        className="rounded bg-blue-600 px-4 py-3 text-sm font-medium text-white disabled:opacity-40"
+        className="rounded bg-[#0067c0] px-4 py-3 text-sm font-medium text-white disabled:opacity-40"
       >
-        Continua →
+        Continua
       </button>
     </div>
   );
@@ -518,9 +532,9 @@ function TimeStep({
             key={s.key}
             type="button"
             onClick={() => setServiceKey(s.key)}
-            className={`rounded-full px-4 py-1.5 text-sm ${
+            className={`rounded px-4 py-1.5 text-sm ${
               active?.key === s.key
-                ? "bg-zinc-900 font-medium text-white dark:bg-white dark:text-zinc-900"
+                ? "bg-[#0067c0] font-medium text-white"
                 : "border border-zinc-300 dark:border-zinc-700"
             }`}
           >
@@ -603,7 +617,7 @@ function TableStep({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="relative min-h-64 rounded-lg bg-slate-700 p-4">
+      <div className="relative min-h-64 rounded bg-slate-700 p-4">
         {rooms.length === 0 || roomTables.length === 0 ? (
           <p className="text-sm text-slate-300">
             Nessun tavolo in questa sala. Configura sale e tavoli dalle
@@ -624,7 +638,7 @@ function TableStep({
                   onClick={() => setTableId(isSel ? null : t.id)}
                   className={`${size} flex flex-col items-center justify-center rounded text-xs font-semibold shadow ${
                     isSel
-                      ? "bg-blue-500 text-white ring-2 ring-green-400"
+                      ? "bg-[#0067c0] text-white ring-2 ring-[#6ccb5f]"
                       : busy
                         ? "bg-slate-500 text-slate-300 opacity-50"
                         : "bg-white text-slate-800"
@@ -645,7 +659,8 @@ function TableStep({
             onClick={() => setRoomIndex((roomIndex + 1) % rooms.length)}
             className="absolute bottom-3 right-3 rounded bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-white"
           >
-            {room?.name} {rooms.length > 1 ? "⇄" : ""}
+            {room?.name}
+            {rooms.length > 1 ? " · cambia" : ""}
           </button>
         )}
       </div>
@@ -661,7 +676,7 @@ function TableStep({
             }}
             className="rounded border border-zinc-300 px-3 py-2.5 text-sm active:bg-zinc-200 dark:border-zinc-700 dark:active:bg-zinc-800"
           >
-            🪑 Togliere tavoli
+            Togliere tavoli
           </button>
           <button
             type="button"
@@ -669,11 +684,11 @@ function TableStep({
             onClick={() => setTableLocked(!tableLocked)}
             className={`rounded px-3 py-2.5 text-sm disabled:opacity-40 ${
               tableLocked
-                ? "bg-amber-500 font-medium text-white"
+                ? "bg-[#0067c0] font-medium text-white"
                 : "border border-zinc-300 dark:border-zinc-700"
             }`}
           >
-            {tableLocked ? "🔒 Tavolo bloccato" : "🔓 Blocca tavolo"}
+            {tableLocked ? "Tavolo bloccato" : "Blocca tavolo"}
           </button>
         </div>
       ) : (
@@ -694,7 +709,7 @@ function TableStep({
                   onClick={() => setTableId(tableId === t.id ? null : t.id)}
                   className={`rounded border px-3 py-2 text-sm ${
                     tableId === t.id
-                      ? "border-blue-600 bg-blue-600 text-white"
+                      ? "border-[#0067c0] bg-[#0067c0] text-white"
                       : "border-zinc-300 dark:border-zinc-700"
                   }`}
                 >
@@ -709,33 +724,44 @@ function TableStep({
       <button
         type="button"
         onClick={onConfirm}
-        className={`rounded px-4 py-3 text-sm font-medium text-white ${
-          selected ? "bg-blue-600" : "bg-zinc-500"
-        }`}
+        className="rounded bg-[#0067c0] px-4 py-3 text-sm font-medium text-white"
       >
-        {selected ? `Conferma · Tavolo ${selected.label}` : "Senza tavolo →"}
+        {selected ? `Conferma · Tavolo ${selected.label}` : "Senza tavolo"}
       </button>
     </div>
   );
 }
 
 // ---------------------------------------------------------------- step 5
+const DURATIONS = Array.from({ length: 15 }, (_, i) => (i + 2) * 15); // 30..240
+
+function formatDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+
 function DetailsStep({
   date,
   time,
   adults,
   childrenCount,
   duration,
+  setDuration,
   table,
   tableLocked,
+  goToStep,
 }: {
   date: string;
   time: string;
   adults: number;
   childrenCount: number;
   duration: number;
+  setDuration: (n: number) => void;
   table: DiningTable | null;
   tableLocked: boolean;
+  goToStep: (n: number) => void;
 }) {
   const [state, formAction, pending] = useActionState(
     createManualReservation,
@@ -750,14 +776,19 @@ function DetailsStep({
   const [picked, setPicked] = useState(false);
   const [searching, startSearch] = useTransition();
 
+  // Progressive disclosure: typing digits fills the phone and asks for the
+  // name; typing letters fills the name and asks for the phone.
+  const queryIsPhone = /^[\d+\s]+$/.test(query.trim()) && query.trim() !== "";
+
   function onQueryChange(value: string) {
     setQuery(value);
     setPicked(false);
-    if (/^[\d+\s]+$/.test(value)) {
+    if (/^[\d+\s]+$/.test(value.trim()) && value.trim() !== "") {
       setGuestPhone(value.trim());
       setGuestName("");
     } else {
-      setGuestName(value);
+      setGuestName(value.trim());
+      setGuestPhone("");
     }
     if (value.trim().length < 3) {
       setSuggestions([]);
@@ -792,29 +823,47 @@ function DetailsStep({
       <input type="hidden" name="tableId" value={table?.id ?? ""} />
       <input type="hidden" name="tableLocked" value={tableLocked && table ? "1" : ""} />
       <input type="hidden" name="guestName" value={guestName} />
+      <input type="hidden" name="guestPhone" value={guestPhone} />
+      <input type="hidden" name="guestEmail" value={guestEmail} />
 
       <div className="grid grid-cols-2 gap-2 text-sm">
-        <SummaryCell label="Data" value={formatShortDate(date)} />
+        <SummaryCell label="Data" value={formatShortDate(date)} onClick={() => goToStep(0)} />
         <SummaryCell
           label="PAX"
           value={`${pax}${childrenCount > 0 ? ` (${childrenCount} bambini)` : ""}`}
+          onClick={() => goToStep(1)}
         />
-        <SummaryCell label="Ora · Durata" value={`${time} · ${Math.floor(duration / 60)}h${duration % 60 ? ` ${duration % 60}m` : ""}`} />
+        <SummaryCell label="Ora" value={time} onClick={() => goToStep(2)} />
         <SummaryCell
           label="Tavolo"
-          value={table ? `${table.label}${tableLocked ? " 🔒" : ""}` : "Senza tavolo"}
+          value={table ? `${table.label}${tableLocked ? " · Bloccato" : ""}` : "Senza tavolo"}
+          onClick={() => goToStep(3)}
         />
+        <div className="rounded border border-zinc-200 p-2 dark:border-zinc-800">
+          <p className="text-xs text-zinc-500">Durata</p>
+          <select
+            value={duration}
+            onChange={(e) => setDuration(Number(e.target.value))}
+            className="w-full bg-transparent font-medium text-[#0067c0] outline-none dark:text-[#479ef5]"
+          >
+            {DURATIONS.map((d) => (
+              <option key={d} value={d}>
+                {formatDuration(d)}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="relative flex flex-col gap-1">
         <label className="flex flex-col gap-1 text-sm">
-          Cliente (nome o telefono)
+          Cliente
           <input
             required={!guestName}
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
             autoComplete="off"
-            placeholder="Cerca dalle prime 3 lettere/cifre..."
+            placeholder="Cerca..."
             className={inputClass}
           />
         </label>
@@ -852,37 +901,39 @@ function DetailsStep({
       </div>
 
       <div className="grid grid-cols-1 gap-3">
-        <label className="flex flex-col gap-1 text-sm">
-          Nome e cognome
-          <input
-            required
-            value={guestName}
-            onChange={(e) => setGuestName(e.target.value)}
-            className={inputClass}
-          />
-        </label>
-        <div className="grid grid-cols-2 gap-3">
+        {(picked || queryIsPhone) && (
+          <label className="flex flex-col gap-1 text-sm">
+            Nome e cognome
+            <input
+              required
+              value={guestName}
+              onChange={(e) => setGuestName(e.target.value)}
+              className={inputClass}
+            />
+          </label>
+        )}
+        {(picked || (!queryIsPhone && query.trim() !== "")) && (
           <label className="flex flex-col gap-1 text-sm">
             Telefono
             <input
               type="tel"
-              name="guestPhone"
               value={guestPhone}
               onChange={(e) => setGuestPhone(e.target.value)}
               className={inputClass}
             />
           </label>
+        )}
+        {(picked || query.trim() !== "") && (
           <label className="flex flex-col gap-1 text-sm">
-            Email
+            Email (facoltativa)
             <input
               type="email"
-              name="guestEmail"
               value={guestEmail}
               onChange={(e) => setGuestEmail(e.target.value)}
               className={inputClass}
             />
           </label>
-        </div>
+        )}
         <label className="flex flex-col gap-1 text-sm">
           Note private
           <textarea name="notes" rows={2} className={inputClass} />
@@ -896,7 +947,7 @@ function DetailsStep({
       <button
         type="submit"
         disabled={pending}
-        className="flex items-center justify-center gap-2 rounded bg-green-600 px-4 py-3.5 text-base font-semibold text-white disabled:opacity-60"
+        className="flex items-center justify-center gap-2 rounded bg-[#107c10] px-4 py-3.5 text-base font-semibold text-white disabled:opacity-60"
       >
         {pending && (
           <span
@@ -910,11 +961,23 @@ function DetailsStep({
   );
 }
 
-function SummaryCell({ label, value }: { label: string; value: string }) {
+function SummaryCell({
+  label,
+  value,
+  onClick,
+}: {
+  label: string;
+  value: string;
+  onClick: () => void;
+}) {
   return (
-    <div className="rounded border border-zinc-200 p-2 dark:border-zinc-800">
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded border border-zinc-200 p-2 text-left active:bg-zinc-100 dark:border-zinc-800 dark:active:bg-zinc-800"
+    >
       <p className="text-xs text-zinc-500">{label}</p>
-      <p className="font-medium">{value}</p>
-    </div>
+      <p className="font-medium text-[#0067c0] dark:text-[#479ef5]">{value}</p>
+    </button>
   );
 }

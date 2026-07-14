@@ -39,7 +39,7 @@ export default async function ClientsPage({
         />
         <button
           type="submit"
-          className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-zinc-900"
+          className="rounded bg-[#0067c0] px-4 py-2 text-sm font-medium text-white"
         >
           Cerca
         </button>
@@ -64,7 +64,7 @@ export default async function ClientsPage({
                     "Nessun contatto"}
                 </p>
                 {g.notes && (
-                  <p className="truncate text-xs text-zinc-500">📝 {g.notes}</p>
+                  <p className="truncate text-xs text-zinc-500">Note: {g.notes}</p>
                 )}
               </div>
               <div className="text-right">

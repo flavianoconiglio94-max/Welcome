@@ -33,12 +33,12 @@ function NewReservationButton() {
           );
         })
       }
-      className="ml-auto flex items-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-70 dark:bg-white dark:text-zinc-900"
+      className="ml-auto flex items-center gap-2 rounded bg-[#0067c0] px-4 py-2 text-sm font-medium text-white disabled:opacity-70"
     >
       {pending && (
         <span
           aria-hidden
-          className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white dark:border-zinc-900/40 dark:border-t-zinc-900"
+          className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white"
         />
       )}
       + Prenotazione
@@ -57,9 +57,16 @@ export function AdminNav({ restaurantName }: { restaurantName: string }) {
           type="button"
           aria-label="Menu"
           onClick={() => setOpen(true)}
-          className="flex h-9 w-9 items-center justify-center rounded border border-zinc-300 text-lg dark:border-zinc-700"
+          className="flex h-9 w-9 items-center justify-center rounded border border-zinc-300 dark:border-zinc-700"
         >
-          ☰
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+            <path
+              d="M2 4.5h14M2 9h14M2 13.5h14"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
         </button>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{restaurantName}</p>
@@ -69,7 +76,7 @@ export function AdminNav({ restaurantName }: { restaurantName: string }) {
         </div>
         <Suspense
           fallback={
-            <span className="ml-auto rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-zinc-900">
+            <span className="ml-auto rounded bg-[#0067c0] px-4 py-2 text-sm font-medium text-white">
               + Prenotazione
             </span>
           }

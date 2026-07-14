@@ -102,7 +102,7 @@ export function BookingForm({ restaurant }: { restaurant: RestaurantPublic }) {
   if (confirmed) {
     const manageUrl = `/r/${restaurant.slug}/book/confirm/${confirmed.id}?token=${confirmed.cancellation_token}`;
     return (
-      <div className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+      <div className="flex flex-col gap-3 rounded border border-zinc-200 p-4 dark:border-zinc-800">
         <h2 className="font-semibold">Prenotazione registrata</h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {confirmed.status === "confirmed"
@@ -157,7 +157,7 @@ export function BookingForm({ restaurant }: { restaurant: RestaurantPublic }) {
           type="button"
           onClick={searchAvailability}
           disabled={loadingSlots}
-          className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+          className="rounded bg-[#0067c0] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {loadingSlots ? "Ricerca..." : "Cerca disponibilità"}
         </button>
@@ -182,7 +182,7 @@ export function BookingForm({ restaurant }: { restaurant: RestaurantPublic }) {
               onClick={() => setSelectedSlot(slot)}
               className={`rounded border px-3 py-1.5 text-sm ${
                 selectedSlot?.slot_start === slot.slot_start
-                  ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900"
+                  ? "border-[#0067c0] bg-[#0067c0] text-white"
                   : "border-zinc-300 dark:border-zinc-700"
               }`}
             >
@@ -254,7 +254,7 @@ export function BookingForm({ restaurant }: { restaurant: RestaurantPublic }) {
           <button
             type="submit"
             disabled={submitting || (!guestEmail && !guestPhone)}
-            className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+            className="rounded bg-[#0067c0] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             {submitting ? "Invio..." : "Prenota"}
           </button>

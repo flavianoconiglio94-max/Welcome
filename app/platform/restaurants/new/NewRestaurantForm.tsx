@@ -13,7 +13,7 @@ export function NewRestaurantForm() {
 
   if (state.success) {
     return (
-      <p className="text-sm text-green-700 dark:text-green-400">
+      <p className="text-sm text-[#107c10] dark:text-[#6ccb5f]">
         Ristorante creato e invito inviato al proprietario.
       </p>
     );
@@ -64,7 +64,7 @@ export function NewRestaurantForm() {
       <button
         type="submit"
         disabled={pending}
-        className="self-start rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+        className="self-start rounded bg-[#0067c0] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
       >
         {pending ? "Creazione..." : "Crea ristorante e invita proprietario"}
       </button>

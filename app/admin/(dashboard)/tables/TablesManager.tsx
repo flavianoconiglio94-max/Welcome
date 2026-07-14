@@ -85,7 +85,7 @@ export function TablesManager({
         </section>
       ))}
 
-      <section className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+      <section className="flex flex-col gap-3 rounded border border-zinc-200 p-3 dark:border-zinc-800">
         <h2 className="text-sm font-semibold">Aggiungi tavolo</h2>
         <form action={tableAction} className="flex flex-wrap items-end gap-2">
           <label className="flex flex-col gap-1 text-sm">
@@ -117,7 +117,7 @@ export function TablesManager({
           <button
             type="submit"
             disabled={tablePending}
-            className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+            className="rounded bg-[#0067c0] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             Aggiungi
           </button>
@@ -129,7 +129,7 @@ export function TablesManager({
         )}
       </section>
 
-      <section className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+      <section className="flex flex-col gap-3 rounded border border-zinc-200 p-3 dark:border-zinc-800">
         <h2 className="text-sm font-semibold">Aggiungi sala</h2>
         <form action={sectionAction} className="flex items-end gap-2">
           <label className="flex flex-1 flex-col gap-1 text-sm">
@@ -139,7 +139,7 @@ export function TablesManager({
           <button
             type="submit"
             disabled={sectionPending}
-            className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+            className="rounded bg-[#0067c0] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             Aggiungi
           </button>

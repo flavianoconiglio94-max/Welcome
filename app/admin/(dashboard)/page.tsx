@@ -1,26 +1,20 @@
 import { getStaffProfile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { servicesForDate, type OpeningHours } from "@/lib/services";
-import { addDaysISO, localDateISO, localTimeHM, utcFromZoned } from "@/lib/tz";
+import { addDaysISO, localDateISO, utcFromZoned } from "@/lib/tz";
 import { RESERVATION_COLUMNS, type DiningSection, type DiningTable, type Reservation } from "@/lib/types";
-import { DayToolbar } from "./DayToolbar";
-import { ReservationCard } from "./ReservationCard";
+import { DayBook } from "./DayBook";
 
-type Restaurant = { timezone: string; opening_hours: OpeningHours };
-
-const GROUPS: { label: string; statuses: Reservation["status"][] }[] = [
-  { label: "Non confermate", statuses: ["unconfirmed"] },
-  { label: "In attesa di sedersi", statuses: ["pending_seat"] },
-  { label: "Confermate", statuses: ["confirmed"] },
-  { label: "Sedute", statuses: ["seated"] },
-  { label: "Completate", statuses: ["completed"] },
-  { label: "Cancellate / No-show", statuses: ["cancelled", "no_show"] },
-];
+type Restaurant = {
+  timezone: string;
+  opening_hours: OpeningHours;
+  slot_interval_minutes: number;
+};
 
 export default async function LibroVisitePage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string; service?: string; section?: string }>;
+  searchParams: Promise<{ date?: string }>;
 }) {
   const params = await searchParams;
   const staff = (await getStaffProfile())!;
@@ -28,7 +22,7 @@ export default async function LibroVisitePage({
 
   const { data: restaurant } = await supabase
     .from("restaurants")
-    .select("timezone, opening_hours")
+    .select("timezone, opening_hours, slot_interval_minutes")
     .eq("id", staff.restaurant_id)
     .single<Restaurant>();
 
@@ -43,9 +37,7 @@ export default async function LibroVisitePage({
   const [reservationsResult, sectionsResult, tablesResult] = await Promise.all([
     supabase
       .from("reservations")
-      .select(
-        RESERVATION_COLUMNS,
-      )
+      .select(RESERVATION_COLUMNS)
       .gte("starts_at", dayStart.toISOString())
       .lt("starts_at", dayEnd.toISOString())
       .order("starts_at", { ascending: true })
@@ -61,81 +53,23 @@ export default async function LibroVisitePage({
       .returns<DiningTable[]>(),
   ]);
 
-  const sections = sectionsResult.data ?? [];
-  const tables = tablesResult.data ?? [];
-  const tableById = new Map(tables.map((t) => [t.id, t]));
-
-  const services = servicesForDate(restaurant?.opening_hours ?? {}, date);
-  const serviceKey = params.service ?? "all";
-  const activeService = services.find((s) => s.key === serviceKey) ?? null;
-
-  const sectionKey = params.section ?? "all";
-
-  const filtered = (reservationsResult.data ?? []).filter((r) => {
-    if (activeService) {
-      const hm = localTimeHM(r.starts_at, timezone);
-      if (hm < activeService.start || hm > activeService.end) return false;
-    }
-    if (sectionKey !== "all") {
-      const table = r.table_id ? tableById.get(r.table_id) : undefined;
-      if (!table || table.section_id !== sectionKey) return false;
-    }
-    return true;
-  });
-
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-4 py-4">
-      <DayToolbar
-        date={date}
-        today={localDateISO(timezone)}
-        serviceKey={serviceKey}
-        sectionKey={sectionKey}
-        services={services}
-        sections={sections}
-      />
-
       {reservationsResult.error && (
         <p className="text-sm text-red-600 dark:text-red-400">
           {reservationsResult.error.message}
         </p>
       )}
-
-      <div className="flex flex-col gap-2">
-        {GROUPS.map((group) => {
-          const items = filtered.filter((r) => group.statuses.includes(r.status));
-          const pax = items.reduce((sum, r) => sum + r.party_size, 0);
-          return (
-            <details
-              key={group.label}
-              open={items.length > 0}
-              className="rounded-lg border border-zinc-200 dark:border-zinc-800"
-            >
-              <summary className="flex cursor-pointer items-center justify-between rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium dark:bg-zinc-900">
-                <span>{group.label}</span>
-                <span className="text-zinc-500">
-                  {items.length} / {pax}
-                </span>
-              </summary>
-              <ul className="flex flex-col gap-2 p-2">
-                {items.length === 0 ? (
-                  <li className="px-2 py-1 text-sm text-zinc-500">Nessuna</li>
-                ) : (
-                  items.map((r) => (
-                    <ReservationCard
-                      key={r.id}
-                      reservation={r}
-                      timezone={timezone}
-                      tableLabel={
-                        r.table_id ? (tableById.get(r.table_id)?.label ?? "?") : null
-                      }
-                    />
-                  ))
-                )}
-              </ul>
-            </details>
-          );
-        })}
-      </div>
+      <DayBook
+        date={date}
+        today={localDateISO(timezone)}
+        services={servicesForDate(restaurant?.opening_hours ?? {}, date)}
+        slotInterval={restaurant?.slot_interval_minutes ?? 30}
+        sections={sectionsResult.data ?? []}
+        tables={tablesResult.data ?? []}
+        reservations={reservationsResult.data ?? []}
+        timezone={timezone}
+      />
     </main>
   );
 }

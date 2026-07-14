@@ -68,7 +68,7 @@ export function LoginForms({ initialError }: { initialError?: string }) {
         <button
           type="submit"
           disabled={passwordPending}
-          className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+          className="rounded bg-[#0067c0] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {passwordPending ? "Accesso..." : "Accedi"}
         </button>

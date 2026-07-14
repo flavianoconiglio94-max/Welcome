@@ -18,7 +18,7 @@ type RestaurantConfig = {
 export default async function NewReservationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{ date?: string; time?: string }>;
 }) {
   const params = await searchParams;
   const staff = (await getStaffProfile())!;
@@ -50,10 +50,14 @@ export default async function NewReservationPage({
   const defaultDate = /^\d{4}-\d{2}-\d{2}$/.test(params.date ?? "")
     ? params.date!
     : localDateISO(timezone);
+  const defaultTime = /^\d{2}:\d{2}$/.test(params.time ?? "")
+    ? params.time!
+    : null;
 
   return (
     <Wizard
       defaultDate={defaultDate}
+      defaultTime={defaultTime}
       today={localDateISO(timezone)}
       openingHours={config?.opening_hours ?? {}}
       slotInterval={config?.slot_interval_minutes ?? 30}

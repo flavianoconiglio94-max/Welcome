@@ -10,7 +10,7 @@ export default function DashboardLoading() {
       {[...Array(4)].map((_, i) => (
         <div
           key={i}
-          className="h-16 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-900"
+          className="h-16 animate-pulse rounded bg-zinc-100 dark:bg-zinc-900"
         />
       ))}
     </main>

@@ -37,7 +37,7 @@ export default async function SettingsPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 px-4 py-4">
-      <div className="rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+      <div className="rounded border border-zinc-200 p-3 text-sm dark:border-zinc-800">
         <p className="text-xs text-zinc-500">Pagina di prenotazione pubblica</p>
         <p className="break-all font-mono text-xs">
           /r/{restaurant.slug}/book

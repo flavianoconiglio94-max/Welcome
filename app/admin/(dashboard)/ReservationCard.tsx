@@ -52,13 +52,13 @@ export function ReservationCard({
   }
 
   return (
-    <li className="rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
+    <li className="rounded border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
       <Link href={`/admin/reservations/${reservation.id}`} className="block">
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <p className="truncate font-medium">{reservation.guest_name}</p>
             <p className="text-sm">
-              <span className="font-semibold text-amber-600 dark:text-amber-400">
+              <span className="font-semibold text-[#0067c0] dark:text-[#479ef5]">
                 {localTimeHM(reservation.starts_at, timezone)}
               </span>{" "}
               <span className="text-xs text-zinc-500">
@@ -73,7 +73,7 @@ export function ReservationCard({
         </div>
         {reservation.notes && (
           <p className="mt-1 truncate text-xs text-zinc-500">
-            📝 {reservation.notes}
+            Note: {reservation.notes}
           </p>
         )}
       </Link>

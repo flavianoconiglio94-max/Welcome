@@ -89,7 +89,7 @@ export function SettingsForm({
         <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>
       )}
       {state.saved && (
-        <p className="text-sm text-green-700 dark:text-green-400">
+        <p className="text-sm text-[#107c10] dark:text-[#6ccb5f]">
           Impostazioni salvate.
         </p>
       )}
@@ -97,7 +97,7 @@ export function SettingsForm({
       <button
         type="submit"
         disabled={pending}
-        className="self-start rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+        className="self-start rounded bg-[#0067c0] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
       >
         {pending ? "Salvataggio..." : "Salva"}
       </button>

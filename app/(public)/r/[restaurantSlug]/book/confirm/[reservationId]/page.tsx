@@ -54,7 +54,7 @@ export default async function ConfirmPage({
       <h1 className="text-2xl font-semibold tracking-tight">
         La tua prenotazione
       </h1>
-      <div className="flex flex-col gap-2 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+      <div className="flex flex-col gap-2 rounded border border-zinc-200 p-4 dark:border-zinc-800">
         <p className="text-sm">
           <span className="font-medium">Ristorante:</span> {restaurant.name}
         </p>

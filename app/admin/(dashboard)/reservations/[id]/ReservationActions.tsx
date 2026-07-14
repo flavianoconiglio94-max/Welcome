@@ -46,7 +46,7 @@ export function ReservationActions({
     "rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900";
 
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+    <section className="flex flex-col gap-3 rounded border border-zinc-200 p-3 dark:border-zinc-800">
       {RESERVATION_TRANSITIONS[reservation.status].length > 0 && (
         <div className="flex flex-wrap gap-2">
           {RESERVATION_TRANSITIONS[reservation.status].map((to: ReservationStatus) => (
@@ -60,7 +60,7 @@ export function ReservationActions({
               className={`rounded px-3 py-2 text-sm disabled:opacity-50 ${
                 to === "cancelled" || to === "no_show"
                   ? "border border-red-300 text-red-600 dark:border-red-900 dark:text-red-400"
-                  : "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+                  : "bg-[#0067c0] text-white"
               }`}
             >
               {RESERVATION_STATUS_LABELS[to]}
@@ -70,7 +70,7 @@ export function ReservationActions({
       )}
 
       <label className="flex flex-col gap-1 text-sm">
-        Tavolo {reservation.table_locked && "🔒 (bloccato)"}
+        Tavolo {reservation.table_locked && "(bloccato)"}
         <select
           value={reservation.table_id ?? ""}
           disabled={pending}
@@ -107,11 +107,11 @@ export function ReservationActions({
           }
           className={`self-start rounded px-3 py-1.5 text-sm disabled:opacity-50 ${
             reservation.table_locked
-              ? "bg-amber-500 font-medium text-white"
+              ? "bg-[#0067c0] font-medium text-white"
               : "border border-zinc-300 dark:border-zinc-700"
           }`}
         >
-          {reservation.table_locked ? "🔒 Sblocca tavolo" : "🔓 Blocca tavolo"}
+          {reservation.table_locked ? "Sblocca tavolo" : "Blocca tavolo"}
         </button>
       )}
 
@@ -140,7 +140,7 @@ export function ReservationActions({
           Salva note
         </button>
         {notesSaved && (
-          <span className="text-xs text-green-700 dark:text-green-400">
+          <span className="text-xs text-[#107c10] dark:text-[#6ccb5f]">
             Salvate
           </span>
         )}

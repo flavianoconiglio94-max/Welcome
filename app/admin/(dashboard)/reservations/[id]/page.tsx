@@ -122,7 +122,7 @@ export default async function ReservationDetailPage({
 
       <ReservationActions reservation={reservation} tables={tables} />
 
-      <section className="flex flex-col gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+      <section className="flex flex-col gap-2 rounded border border-zinc-200 p-3 dark:border-zinc-800">
         <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
           Cliente
         </p>
