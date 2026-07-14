@@ -1,0 +1,34 @@
+import { NextResponse } from "next/server";
+import type { EmailOtpType } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/server";
+
+// Token-hash verification endpoint for emailed links (magic link, password
+// recovery, invites). The email templates in Supabase link straight here with
+// the production domain hardcoded, so — unlike the default ConfirmationURL
+// flow — nothing depends on the project's Site URL or redirect allow-list:
+// the app verifies the token itself and sets the session cookies.
+export async function GET(request: Request) {
+  const { searchParams, origin } = new URL(request.url);
+  const tokenHash = searchParams.get("token_hash");
+  const type = searchParams.get("type") as EmailOtpType | null;
+
+  // Same-site paths only, so the link can't become an open redirect.
+  const rawNext = searchParams.get("next") ?? "/admin";
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/admin";
+
+  if (tokenHash && type) {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.verifyOtp({
+      type,
+      token_hash: tokenHash,
+    });
+    if (!error) {
+      return NextResponse.redirect(`${origin}${next}`);
+    }
+  }
+
+  const fallbackLogin = next.startsWith("/platform")
+    ? "/platform/login"
+    : "/admin/login";
+  return NextResponse.redirect(`${origin}${fallbackLogin}?error=auth`);
+}

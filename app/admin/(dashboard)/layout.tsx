@@ -22,6 +22,9 @@ export default async function AdminDashboardLayout({
           Il tuo account ({user.email}) non è collegato a nessun ristorante.
           Chiedi al gestore della piattaforma di invitarti come staff.
         </p>
+        <a href="/platform" className="text-sm underline underline-offset-2">
+          Sei l&apos;amministratore della piattaforma? Vai al pannello
+        </a>
       </main>
     );
   }

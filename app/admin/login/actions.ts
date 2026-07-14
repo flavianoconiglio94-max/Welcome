@@ -60,3 +60,29 @@ export async function requestAdminMagicLink(
 
   return { sent: true };
 }
+
+export async function requestPasswordReset(
+  _prevState: LoginState,
+  formData: FormData,
+): Promise<LoginState> {
+  const email = String(formData.get("email") ?? "").trim();
+  if (!email) {
+    return { error: "Inserisci un'email valida." };
+  }
+
+  const supabase = await createClient();
+  const siteUrl = await getRequestOrigin();
+
+  // The redirect target actually used comes from the Reset Password email
+  // template (token_hash link to /auth/confirm); this redirectTo is kept for
+  // compatibility if the template ever reverts to {{ .ConfirmationURL }}.
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${siteUrl}/auth/confirm?next=/account/reset-password`,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { sent: true };
+}
