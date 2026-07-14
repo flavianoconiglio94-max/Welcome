@@ -11,6 +11,7 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
+  const code = searchParams.get("code");
 
   // Same-site paths only, so the link can't become an open redirect.
   const rawNext = searchParams.get("next") ?? "/admin";
@@ -22,6 +23,14 @@ export async function GET(request: Request) {
       type,
       token_hash: tokenHash,
     });
+    if (!error) {
+      return NextResponse.redirect(`${origin}${next}`);
+    }
+  } else if (code) {
+    // Default-template flow: GoTrue's /verify already validated the email
+    // token and redirected here with a PKCE code to exchange.
+    const supabase = await createClient();
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
       return NextResponse.redirect(`${origin}${next}`);
     }
