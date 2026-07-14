@@ -8,6 +8,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import { useRouter } from "next/navigation";
 import { fadeInUp } from "@/lib/motion";
 import {
   createManualReservation,
@@ -18,9 +19,37 @@ import {
 } from "../../../actions";
 import { servicesForDate, type OpeningHours } from "@/lib/services";
 import { localTimeHM, utcFromZoned } from "@/lib/tz";
-import type { DiningSection, DiningTable, GuestDirectoryEntry } from "@/lib/types";
+import {
+  CHANNEL_LABELS,
+  SPECIAL_OCCASIONS,
+  type DetailOptions,
+  type DiningSection,
+  type DiningTable,
+  type GuestDirectoryEntry,
+} from "@/lib/types";
 
 const STEPS = ["Data", "PAX", "Ora", "Tavolo", "Dettagli"] as const;
+
+// Client selection and optional details live at the Wizard level so going
+// back to edit a step never loses what was already filled in.
+type GuestState = {
+  query: string;
+  name: string;
+  phone: string;
+  email: string;
+  picked: boolean;
+};
+
+type ExtrasState = {
+  highlighted: boolean;
+  highChairs: number;
+  strollers: number;
+  allergies: string;
+  specialOccasion: string;
+  accessibleTable: boolean;
+  publicNotes: string;
+  channel: string;
+};
 
 const MONTHS = [
   "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno",
@@ -41,6 +70,7 @@ export function Wizard({
   timezone,
   sections,
   tables,
+  detailOptions,
 }: {
   defaultDate: string;
   defaultTime: string | null;
@@ -52,7 +82,9 @@ export function Wizard({
   timezone: string;
   sections: DiningSection[];
   tables: DiningTable[];
+  detailOptions: DetailOptions;
 }) {
+  const router = useRouter();
   // When the libro visite opens the wizard from a time-slot row, date and
   // time are already chosen: start directly from the PAX step.
   const [step, setStep] = useState(defaultTime ? 1 : 0);
@@ -64,6 +96,23 @@ export function Wizard({
   const [tableId, setTableId] = useState<string | null>(null);
   const [tableLocked, setTableLocked] = useState(false);
   const [manualTable, setManualTable] = useState(false);
+  const [guest, setGuest] = useState<GuestState>({
+    query: "",
+    name: "",
+    phone: "",
+    email: "",
+    picked: false,
+  });
+  const [extras, setExtras] = useState<ExtrasState>({
+    highlighted: false,
+    highChairs: 0,
+    strollers: 0,
+    allergies: "",
+    specialOccasion: "",
+    accessibleTable: false,
+    publicNotes: "",
+    channel: "phone",
+  });
 
   const [dayLoad, setDayLoad] = useState<DayLoadEntry[]>([]);
   const [loadPending, startLoad] = useTransition();
@@ -177,12 +226,22 @@ export function Wizard({
             </button>
           );
         })}
-        {loadPending && (
-          <span
-            aria-hidden
-            className="ml-auto h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-zinc-300 border-t-[#0067c0]"
-          />
-        )}
+        <span className="ml-auto flex shrink-0 items-center gap-2">
+          {loadPending && (
+            <span
+              aria-hidden
+              className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-[#0067c0]"
+            />
+          )}
+          <button
+            type="button"
+            aria-label="Chiudi"
+            onClick={() => router.push(`/admin?date=${date}`)}
+            className="flex h-8 w-8 items-center justify-center rounded border border-zinc-300 text-lg leading-none dark:border-zinc-700"
+          >
+            ×
+          </button>
+        </span>
       </div>
 
       <div ref={stepRef} className="flex flex-col gap-4">
@@ -269,6 +328,11 @@ export function Wizard({
           table={tables.find((t) => t.id === tableId) ?? null}
           tableLocked={tableLocked}
           goToStep={setStep}
+          guest={guest}
+          setGuest={setGuest}
+          extras={extras}
+          setExtras={setExtras}
+          detailOptions={detailOptions}
         />
       )}
       </div>
@@ -762,6 +826,11 @@ function DetailsStep({
   table,
   tableLocked,
   goToStep,
+  guest,
+  setGuest,
+  extras,
+  setExtras,
+  detailOptions,
 }: {
   date: string;
   time: string;
@@ -772,34 +841,36 @@ function DetailsStep({
   table: DiningTable | null;
   tableLocked: boolean;
   goToStep: (n: number) => void;
+  guest: GuestState;
+  setGuest: (g: GuestState) => void;
+  extras: ExtrasState;
+  setExtras: (e: ExtrasState) => void;
+  detailOptions: DetailOptions;
 }) {
   const [state, formAction, pending] = useActionState(
     createManualReservation,
     initialState,
   );
 
-  const [query, setQuery] = useState("");
-  const [guestName, setGuestName] = useState("");
-  const [guestEmail, setGuestEmail] = useState("");
-  const [guestPhone, setGuestPhone] = useState("");
   const [suggestions, setSuggestions] = useState<GuestDirectoryEntry[]>([]);
-  const [picked, setPicked] = useState(false);
   const [searching, startSearch] = useTransition();
 
   // Progressive disclosure: typing digits fills the phone and asks for the
-  // name; typing letters fills the name and asks for the phone.
+  // name; typing letters fills the name and asks for the phone. After a pick
+  // the search box IS the name, so no duplicated field.
+  const query = guest.query;
   const queryIsPhone = /^[\d+\s]+$/.test(query.trim()) && query.trim() !== "";
 
   function onQueryChange(value: string) {
-    setQuery(value);
-    setPicked(false);
+    const next: GuestState = { ...guest, query: value, picked: false };
     if (/^[\d+\s]+$/.test(value.trim()) && value.trim() !== "") {
-      setGuestPhone(value.trim());
-      setGuestName("");
+      next.phone = value.trim();
+      next.name = "";
     } else {
-      setGuestName(value.trim());
-      setGuestPhone("");
+      next.name = value.trim();
+      next.phone = "";
     }
+    setGuest(next);
     if (value.trim().length < 3) {
       setSuggestions([]);
       return;
@@ -810,12 +881,14 @@ function DetailsStep({
   }
 
   function pickGuest(g: GuestDirectoryEntry) {
-    setGuestName(g.guest_name ?? "");
-    setGuestEmail(g.guest_email ?? "");
-    setGuestPhone(g.guest_phone ?? "");
-    setQuery(g.guest_name ?? g.guest_phone ?? "");
+    setGuest({
+      query: g.guest_name ?? g.guest_phone ?? "",
+      name: g.guest_name ?? "",
+      phone: g.guest_phone ?? "",
+      email: g.guest_email ?? "",
+      picked: true,
+    });
     setSuggestions([]);
-    setPicked(true);
   }
 
   const inputClass =
@@ -832,9 +905,17 @@ function DetailsStep({
       <input type="hidden" name="duration" value={duration} />
       <input type="hidden" name="tableId" value={table?.id ?? ""} />
       <input type="hidden" name="tableLocked" value={tableLocked && table ? "1" : ""} />
-      <input type="hidden" name="guestName" value={guestName} />
-      <input type="hidden" name="guestPhone" value={guestPhone} />
-      <input type="hidden" name="guestEmail" value={guestEmail} />
+      <input type="hidden" name="guestName" value={guest.name} />
+      <input type="hidden" name="guestPhone" value={guest.phone} />
+      <input type="hidden" name="guestEmail" value={guest.email} />
+      <input type="hidden" name="highlighted" value={extras.highlighted ? "1" : ""} />
+      <input type="hidden" name="highChairs" value={extras.highChairs} />
+      <input type="hidden" name="strollers" value={extras.strollers} />
+      <input type="hidden" name="allergies" value={extras.allergies} />
+      <input type="hidden" name="specialOccasion" value={extras.specialOccasion} />
+      <input type="hidden" name="accessibleTable" value={extras.accessibleTable ? "1" : ""} />
+      <input type="hidden" name="publicNotes" value={extras.publicNotes} />
+      <input type="hidden" name="channel" value={extras.channel} />
 
       <div className="grid grid-cols-2 gap-2 text-sm">
         <SummaryCell label="Data" value={formatShortDate(date)} onClick={() => goToStep(0)} />
@@ -863,13 +944,27 @@ function DetailsStep({
             ))}
           </select>
         </div>
+        <div className="rounded border border-zinc-200 p-2 dark:border-zinc-800">
+          <p className="text-xs text-zinc-500">Mezzo</p>
+          <select
+            value={extras.channel}
+            onChange={(e) => setExtras({ ...extras, channel: e.target.value })}
+            className="w-full bg-transparent font-medium text-[#0067c0] outline-none dark:text-[#479ef5]"
+          >
+            {Object.entries(CHANNEL_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="relative flex flex-col gap-1">
         <label className="flex flex-col gap-1 text-sm">
           Cliente
           <input
-            required={!guestName}
+            required={!guest.name}
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
             autoComplete="off"
@@ -877,7 +972,7 @@ function DetailsStep({
             className={inputClass}
           />
         </label>
-        {suggestions.length > 0 && !picked && (
+        {suggestions.length > 0 && !guest.picked && (
           <ul className="absolute top-full z-10 mt-1 w-full overflow-hidden rounded border border-zinc-200 bg-white text-sm shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
             {suggestions.map((g) => (
               <li key={g.id}>
@@ -903,7 +998,7 @@ function DetailsStep({
         {searching && (
           <p className="text-xs text-zinc-500">Ricerca in corso...</p>
         )}
-        {!picked && query.trim().length >= 3 && suggestions.length === 0 && !searching && (
+        {!guest.picked && query.trim().length >= 3 && suggestions.length === 0 && !searching && (
           <p className="text-xs text-zinc-500">
             Nessun cliente trovato: compila i campi per salvarne uno nuovo.
           </p>
@@ -911,44 +1006,114 @@ function DetailsStep({
       </div>
 
       <div className="grid grid-cols-1 gap-3">
-        {(picked || queryIsPhone) && (
+        {!guest.picked && queryIsPhone && (
           <label className="flex flex-col gap-1 text-sm">
             Nome e cognome
             <input
               required
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
+              value={guest.name}
+              onChange={(e) => setGuest({ ...guest, name: e.target.value })}
               className={inputClass}
             />
           </label>
         )}
-        {(picked || (!queryIsPhone && query.trim() !== "")) && (
+        {(guest.picked || (!queryIsPhone && query.trim() !== "")) && (
           <label className="flex flex-col gap-1 text-sm">
             Telefono
             <input
               type="tel"
-              value={guestPhone}
-              onChange={(e) => setGuestPhone(e.target.value)}
+              value={guest.phone}
+              onChange={(e) => setGuest({ ...guest, phone: e.target.value })}
               className={inputClass}
             />
           </label>
         )}
-        {(picked || query.trim() !== "") && (
+        {(guest.picked || query.trim() !== "") && (
           <label className="flex flex-col gap-1 text-sm">
             Email (facoltativa)
             <input
               type="email"
-              value={guestEmail}
-              onChange={(e) => setGuestEmail(e.target.value)}
+              value={guest.email}
+              onChange={(e) => setGuest({ ...guest, email: e.target.value })}
               className={inputClass}
             />
           </label>
         )}
-        <label className="flex flex-col gap-1 text-sm">
-          Note private
-          <textarea name="notes" rows={2} className={inputClass} />
-        </label>
       </div>
+
+      <ToggleRow
+        label="In evidenza"
+        checked={extras.highlighted}
+        onChange={(v) => setExtras({ ...extras, highlighted: v })}
+      />
+
+      {detailOptions.high_chairs && (
+        <CounterRow
+          label="Seggioloni"
+          value={extras.highChairs}
+          onChange={(v) => setExtras({ ...extras, highChairs: v })}
+        />
+      )}
+      {detailOptions.strollers && (
+        <CounterRow
+          label="Passeggini"
+          value={extras.strollers}
+          onChange={(v) => setExtras({ ...extras, strollers: v })}
+        />
+      )}
+      {detailOptions.allergies && (
+        <label className="flex flex-col gap-1 text-sm">
+          Allergie
+          <input
+            value={extras.allergies}
+            onChange={(e) => setExtras({ ...extras, allergies: e.target.value })}
+            placeholder="Es. glutine, lattosio..."
+            className={inputClass}
+          />
+        </label>
+      )}
+      {detailOptions.special_occasion && (
+        <label className="flex flex-col gap-1 text-sm">
+          Occasione speciale
+          <select
+            value={extras.specialOccasion}
+            onChange={(e) =>
+              setExtras({ ...extras, specialOccasion: e.target.value })
+            }
+            className={inputClass}
+          >
+            <option value="">Nessuna</option>
+            {SPECIAL_OCCASIONS.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {detailOptions.accessible_table && (
+        <ToggleRow
+          label="Tavolo accessibile"
+          checked={extras.accessibleTable}
+          onChange={(v) => setExtras({ ...extras, accessibleTable: v })}
+        />
+      )}
+
+      <label className="flex flex-col gap-1 text-sm">
+        Note private
+        <textarea name="notes" rows={2} className={inputClass} />
+      </label>
+      {detailOptions.public_notes && (
+        <label className="flex flex-col gap-1 text-sm">
+          Note pubbliche (visibili al cliente)
+          <textarea
+            value={extras.publicNotes}
+            onChange={(e) => setExtras({ ...extras, publicNotes: e.target.value })}
+            rows={2}
+            className={inputClass}
+          />
+        </label>
+      )}
 
       {state.error && (
         <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>
@@ -957,15 +1122,18 @@ function DetailsStep({
       <button
         type="submit"
         disabled={pending}
-        className="flex items-center justify-center gap-2 rounded bg-[#107c10] px-4 py-3.5 text-base font-semibold text-white disabled:opacity-60"
+        className="flex flex-col items-center justify-center rounded bg-[#107c10] px-4 py-3 text-white disabled:opacity-60"
       >
-        {pending && (
-          <span
-            aria-hidden
-            className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
-          />
-        )}
-        {pending ? "Salvataggio..." : "Salva"}
+        <span className="flex items-center gap-2 text-base font-semibold">
+          {pending && (
+            <span
+              aria-hidden
+              className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+            />
+          )}
+          {pending ? "Salvataggio..." : "Salva"}
+        </span>
+        <span className="text-xs opacity-80">Confermata</span>
       </button>
     </form>
   );
@@ -989,5 +1157,72 @@ function SummaryCell({
       <p className="text-xs text-zinc-500">{label}</p>
       <p className="font-medium text-[#0067c0] dark:text-[#479ef5]">{value}</p>
     </button>
+  );
+}
+
+function ToggleRow({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded border border-zinc-200 px-3 py-2 dark:border-zinc-800">
+      <span className="text-sm">{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+          checked ? "bg-[#0067c0]" : "bg-zinc-300 dark:bg-zinc-700"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+            checked ? "left-[1.375rem]" : "left-0.5"
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
+function CounterRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded border border-zinc-200 px-3 py-2 dark:border-zinc-800">
+      <span className="text-sm">
+        {label} <span className="font-semibold">{value}</span>
+      </span>
+      <div className="flex gap-1">
+        <button
+          type="button"
+          aria-label={`Meno ${label}`}
+          onClick={() => onChange(Math.max(0, value - 1))}
+          className="flex h-8 w-8 items-center justify-center rounded border border-zinc-300 dark:border-zinc-700"
+        >
+          −
+        </button>
+        <button
+          type="button"
+          aria-label={`Più ${label}`}
+          onClick={() => onChange(Math.min(20, value + 1))}
+          className="flex h-8 w-8 items-center justify-center rounded border border-zinc-300 dark:border-zinc-700"
+        >
+          +
+        </button>
+      </div>
+    </div>
   );
 }

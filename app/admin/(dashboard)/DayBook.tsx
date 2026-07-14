@@ -272,11 +272,9 @@ export function DayBook({
                               key={r.id}
                               reservation={r}
                               timezone={timezone}
-                              tableLabel={
-                                r.table_id
-                                  ? (tableById.get(r.table_id)?.label ?? "?")
-                                  : null
-                              }
+                              tables={tables}
+                              sections={sections}
+                              dayReservations={reservations}
                             />
                           ))}
                         </ul>
@@ -297,9 +295,9 @@ export function DayBook({
                       key={r.id}
                       reservation={r}
                       timezone={timezone}
-                      tableLabel={
-                        r.table_id ? (tableById.get(r.table_id)?.label ?? "?") : null
-                      }
+                      tables={tables}
+                      sections={sections}
+                      dayReservations={reservations}
                     />
                   ))
                 )}

@@ -183,6 +183,16 @@ export async function createManualReservation(
       .join(" · ");
   }
 
+  // Optional Restoo-style details (fields may be disabled from settings).
+  const highlighted = formData.get("highlighted") === "1";
+  const highChairs = Math.max(0, Number(formData.get("highChairs") ?? 0) || 0);
+  const strollers = Math.max(0, Number(formData.get("strollers") ?? 0) || 0);
+  const allergies = String(formData.get("allergies") ?? "").trim();
+  const specialOccasion = String(formData.get("specialOccasion") ?? "").trim();
+  const accessibleTable = formData.get("accessibleTable") === "1";
+  const publicNotes = String(formData.get("publicNotes") ?? "").trim();
+  const channel = String(formData.get("channel") ?? "").trim();
+
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) {
     return { error: "Data o ora non valide." };
   }
@@ -227,11 +237,22 @@ export async function createManualReservation(
     return { error: mapDbError(error) };
   }
 
-  if (tableLocked && created?.id && created.table_id) {
-    await supabase
-      .from("reservations")
-      .update({ table_locked: true })
-      .eq("id", created.id);
+  // The RPC covers the core columns; the optional details go in a follow-up
+  // update (same pattern as table_locked).
+  if (created?.id) {
+    const extras: Record<string, unknown> = {};
+    if (tableLocked && created.table_id) extras.table_locked = true;
+    if (highlighted) extras.highlighted = true;
+    if (highChairs > 0) extras.high_chairs = highChairs;
+    if (strollers > 0) extras.strollers = strollers;
+    if (allergies) extras.allergies = allergies;
+    if (specialOccasion) extras.special_occasion = specialOccasion;
+    if (accessibleTable) extras.accessible_table = true;
+    if (publicNotes) extras.public_notes = publicNotes;
+    if (channel) extras.channel = channel;
+    if (Object.keys(extras).length > 0) {
+      await supabase.from("reservations").update(extras).eq("id", created.id);
+    }
   }
 
   revalidatePath("/admin");

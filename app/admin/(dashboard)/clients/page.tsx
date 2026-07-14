@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { GuestDirectoryEntry } from "@/lib/types";
 
@@ -54,7 +55,15 @@ export default async function ClientsPage({
       ) : (
         <ul className="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">
           {guests.map((g) => (
-            <li key={g.id} className="flex items-center gap-3 py-3">
+            <li key={g.id}>
+              <Link
+                href={`/admin/clients/profile?${new URLSearchParams({
+                  ...(g.guest_name ? { name: g.guest_name } : {}),
+                  ...(g.guest_phone ? { phone: g.guest_phone } : {}),
+                  ...(g.guest_email ? { email: g.guest_email } : {}),
+                }).toString()}`}
+                className="flex items-center gap-3 py-3"
+              >
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">
                   {g.guest_name ?? "(senza nome)"}
@@ -71,6 +80,7 @@ export default async function ClientsPage({
                 <p className="text-lg font-semibold">{g.visit_count}</p>
                 <p className="text-xs text-zinc-500">visite</p>
               </div>
+              </Link>
             </li>
           ))}
         </ul>

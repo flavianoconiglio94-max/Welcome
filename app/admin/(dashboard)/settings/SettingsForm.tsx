@@ -1,12 +1,14 @@
 "use client";
 
 import { useActionState } from "react";
+import { DETAIL_OPTION_LABELS, type DetailOptions } from "@/lib/types";
 import { updateRestaurantSettings, type SettingsState } from "./actions";
 
 const initialState: SettingsState = {};
 
 export function SettingsForm({
   restaurant,
+  detailOptions,
 }: {
   restaurant: {
     name: string;
@@ -17,6 +19,7 @@ export function SettingsForm({
     instagram_handle: string | null;
     max_covers_per_slot: number | null;
   };
+  detailOptions: DetailOptions;
 }) {
   const [state, formAction, pending] = useActionState(
     updateRestaurantSettings,
@@ -84,6 +87,28 @@ export function SettingsForm({
           className={inputClass}
         />
       </label>
+
+      <fieldset className="flex flex-col gap-2 rounded border border-zinc-200 p-3 dark:border-zinc-800">
+        <legend className="px-1 text-sm font-medium">
+          Dettagli aggiuntivi prenotazione
+        </legend>
+        <p className="text-xs text-zinc-500">
+          Scegli quali campi opzionali mostrare nel form prenotazione.
+        </p>
+        {(Object.keys(DETAIL_OPTION_LABELS) as (keyof DetailOptions)[]).map(
+          (key) => (
+            <label key={key} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name={`detail_${key}`}
+                defaultChecked={detailOptions[key]}
+                className="h-4 w-4 accent-[#0067c0]"
+              />
+              {DETAIL_OPTION_LABELS[key]}
+            </label>
+          ),
+        )}
+      </fieldset>
 
       {state.error && (
         <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>

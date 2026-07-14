@@ -2,7 +2,12 @@ import { getStaffProfile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { localDateISO } from "@/lib/tz";
 import type { OpeningHours } from "@/lib/services";
-import type { DiningSection, DiningTable } from "@/lib/types";
+import {
+  DEFAULT_DETAIL_OPTIONS,
+  type DetailOptions,
+  type DiningSection,
+  type DiningTable,
+} from "@/lib/types";
 import { Wizard } from "./Wizard";
 
 type RestaurantConfig = {
@@ -13,6 +18,7 @@ type RestaurantConfig = {
   min_party_size: number;
   max_party_size: number;
   max_covers_per_slot: number | null;
+  detail_options: Partial<DetailOptions> | null;
 };
 
 export default async function NewReservationPage({
@@ -28,7 +34,7 @@ export default async function NewReservationPage({
     supabase
       .from("restaurants")
       .select(
-        "timezone, opening_hours, slot_interval_minutes, default_duration_minutes, min_party_size, max_party_size, max_covers_per_slot",
+        "timezone, opening_hours, slot_interval_minutes, default_duration_minutes, min_party_size, max_party_size, max_covers_per_slot, detail_options",
       )
       .eq("id", staff.restaurant_id)
       .single<RestaurantConfig>(),
@@ -66,6 +72,7 @@ export default async function NewReservationPage({
       timezone={timezone}
       sections={sectionsResult.data ?? []}
       tables={tablesResult.data ?? []}
+      detailOptions={{ ...DEFAULT_DETAIL_OPTIONS, ...config?.detail_options }}
     />
   );
 }

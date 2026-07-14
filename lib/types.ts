@@ -46,12 +46,64 @@ export type Reservation = {
   cancellation_token: string;
   notes: string | null;
   table_locked: boolean;
+  highlighted: boolean;
+  high_chairs: number;
+  strollers: number;
+  allergies: string | null;
+  special_occasion: string | null;
+  accessible_table: boolean;
+  public_notes: string | null;
+  channel: string | null;
 };
 
 // Column list kept in sync with the Reservation type: use it in every
 // .select() so a new column can't be silently missing from one page.
 export const RESERVATION_COLUMNS =
-  "id, restaurant_id, table_id, guest_name, guest_email, guest_phone, party_size, starts_at, ends_at, status, source, cancellation_token, notes, table_locked";
+  "id, restaurant_id, table_id, guest_name, guest_email, guest_phone, party_size, starts_at, ends_at, status, source, cancellation_token, notes, table_locked, highlighted, high_chairs, strollers, allergies, special_occasion, accessible_table, public_notes, channel";
+
+// Optional wizard fields the restaurant can turn on/off from settings.
+export type DetailOptions = {
+  high_chairs: boolean;
+  strollers: boolean;
+  allergies: boolean;
+  special_occasion: boolean;
+  accessible_table: boolean;
+  public_notes: boolean;
+};
+
+export const DEFAULT_DETAIL_OPTIONS: DetailOptions = {
+  high_chairs: true,
+  strollers: true,
+  allergies: true,
+  special_occasion: true,
+  accessible_table: true,
+  public_notes: true,
+};
+
+export const DETAIL_OPTION_LABELS: Record<keyof DetailOptions, string> = {
+  high_chairs: "Seggioloni",
+  strollers: "Passeggini",
+  allergies: "Allergie",
+  special_occasion: "Occasione speciale",
+  accessible_table: "Tavolo accessibile",
+  public_notes: "Note pubbliche",
+};
+
+export const SPECIAL_OCCASIONS = [
+  "Compleanno",
+  "Anniversario",
+  "Laurea",
+  "Cena di lavoro",
+  "Altro",
+] as const;
+
+export const CHANNEL_LABELS: Record<string, string> = {
+  phone: "Telefono",
+  in_person: "Di persona",
+  email: "Email",
+  whatsapp: "WhatsApp",
+  other: "Altro",
+};
 
 export const RESERVATION_STATUS_LABELS: Record<ReservationStatus, string> = {
   unconfirmed: "In attesa di conferma",
@@ -70,7 +122,7 @@ export const RESERVATION_TRANSITIONS: Record<ReservationStatus, ReservationStatu
   unconfirmed: ["confirmed", "cancelled"],
   pending_seat: ["seated", "cancelled", "no_show"],
   confirmed: ["pending_seat", "seated", "cancelled", "no_show"],
-  seated: ["completed"],
+  seated: ["completed", "confirmed"],
   completed: [],
   cancelled: [],
   no_show: [],

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getStaffProfile } from "@/lib/auth/session";
+import { DETAIL_OPTION_LABELS, type DetailOptions } from "@/lib/types";
 
 export type SettingsState = { error?: string; saved?: boolean };
 
@@ -24,6 +25,12 @@ export async function updateRestaurantSettings(
     return { error: "Coperti massimi per fascia: inserisci un numero intero positivo o lascia vuoto." };
   }
 
+  const detailOptions = Object.fromEntries(
+    (Object.keys(DETAIL_OPTION_LABELS) as (keyof DetailOptions)[]).map(
+      (key) => [key, formData.get(`detail_${key}`) === "on"],
+    ),
+  );
+
   const supabase = await createClient();
   // RLS allows this update only for owner/manager roles.
   const { error, data } = await supabase
@@ -36,6 +43,7 @@ export async function updateRestaurantSettings(
       facebook_page_url: clean("facebook"),
       instagram_handle: clean("instagram"),
       max_covers_per_slot: maxCovers,
+      detail_options: detailOptions,
     })
     .eq("id", staff.restaurant_id)
     .select("id");
